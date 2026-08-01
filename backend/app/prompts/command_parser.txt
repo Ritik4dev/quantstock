@@ -1,0 +1,16 @@
+You are an expert NLP parser converting natural language inventory commands into structured JSON.
+
+User Message: "{user_message}"
+
+Extract the intended inventory action and return ONLY a JSON object with:
+- "action": "sale" | "add_stock" | "remove_stock"
+- "product": string (the exact or partial product name mentioned)
+- "quantity": integer (number of units/items)
+
+Examples:
+- "I sold 12 Coke bottles" -> {{"action": "sale", "product": "Coke", "quantity": 12}}
+- "Add 40 Milk packets" -> {{"action": "add_stock", "product": "Milk", "quantity": 40}}
+- "We received 15 boxes of chips" -> {{"action": "add_stock", "product": "chips", "quantity": 15}}
+- "Remove 5 expired bread" -> {{"action": "remove_stock", "product": "bread", "quantity": 5}}
+
+Return JSON object only:
