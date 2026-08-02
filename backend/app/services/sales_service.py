@@ -193,37 +193,56 @@ class SalesService:
                 raw_sales = await DocumentParserService._parse_tabular_csv(pdf_text.encode("utf-8"))
 
         if not raw_sales:
-            # Fallback to Groq AI extraction
+            # Fallback to Groq AI extraction (Qwen model)
             groq = GroqService()
-            if fmt == "PDF":
-                sample_str = DocumentParserService.extract_text_from_pdf(content_bytes)
+            if fmt == "IMAGE":
+                import base64
+                b64_str = base64.b64encode(content_bytes).decode("utf-8")
+                messages = [
+                    {"role": "system", "content": "You are an expert sales transaction parser. Respond ONLY in valid JSON."},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": f"Extract all completed sales transactions from this image ({filename}). Return a JSON object with key 'sales' containing a list of sales lines with keys: product_name, sku, quantity_sold, unit_price, buying_price, total_amount, sale_date."},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{b64_str}"
+                                }
+                            }
+                        ]
+                    }
+                ]
             else:
-                text_content = content_bytes.decode("latin1", errors="ignore")
-                chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
-                sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
+                if fmt == "PDF":
+                    sample_str = DocumentParserService.extract_text_from_pdf(content_bytes)
+                else:
+                    text_content = content_bytes.decode("latin1", errors="ignore")
+                    chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
+                    sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
 
-            prompt = (
-                f"You are a Sales Receipt & Daily Register Data Extractor.\n"
-                f"File Name: {filename}\nFile Format: {fmt}\n\n"
-                f"Extracted Document Text:\n\"\"\"\n{sample_str[:4000]}\n\"\"\"\n\n"
-                "Extract all completed sales transactions from this document.\n"
-                "Return a JSON object with key 'sales' containing a list of sales lines with keys:\n"
-                "- product_name (string, required)\n"
-                "- sku (string or null)\n"
-                "- quantity_sold (integer, default 1)\n"
-                "- unit_price (float, default 0.0)\n"
-                "- buying_price (float, default 0.0)\n"
-                "- total_amount (float, default 0.0)\n"
-                "- sale_date (string YYYY-MM-DD or null)"
-            )
+                prompt = (
+                    f"You are a Sales Receipt & Daily Register Data Extractor.\n"
+                    f"File Name: {filename}\nFile Format: {fmt}\n\n"
+                    f"Extracted Document Text:\n\"\"\"\n{sample_str[:4000]}\n\"\"\"\n\n"
+                    "Extract all completed sales transactions from this document.\n"
+                    "Return a JSON object with key 'sales' containing a list of sales lines with keys:\n"
+                    "- product_name (string, required)\n"
+                    "- sku (string or null)\n"
+                    "- quantity_sold (integer, default 1)\n"
+                    "- unit_price (float, default 0.0)\n"
+                    "- buying_price (float, default 0.0)\n"
+                    "- total_amount (float, default 0.0)\n"
+                    "- sale_date (string YYYY-MM-DD or null)"
+                )
 
-            messages = [
-                {"role": "system", "content": "You are an expert sales transaction parser. Respond ONLY in valid JSON."},
-                {"role": "user", "content": prompt}
-            ]
+                messages = [
+                    {"role": "system", "content": "You are an expert sales transaction parser. Respond ONLY in valid JSON."},
+                    {"role": "user", "content": prompt}
+                ]
 
             try:
-                res_dict = await groq.generate_json_completion(messages)
+                res_dict = await groq.generate_json_completion(messages, model_override="qwen/qwen3.6-27b")
                 raw_sales = res_dict.get("sales") or res_dict.get("extracted_sales") or res_dict.get("items") or []
             except Exception as e:
                 logger.error(f"Groq sales extraction failed: {e}")
@@ -319,7 +338,7 @@ class SalesService:
         business_id: int,
         user_id: int,
         filename: str,
-        extracted_sales: List[ExtractedSaleLine]
+        extracted_sales: List[Any]
     ) -> ImportHistory:
         """
         Commits extracted sales transactions into PostgreSQL and AUTO-DECREMENTS Inventory stock per product.
@@ -352,24 +371,49 @@ class SalesService:
                     rows_failed += 1
                     continue
 
-                # Find or Create Product
-                p_q = select(Product).where(Product.business_id == business_id, Product.name.ilike(p_name))
-                p_res = await db.execute(p_q)
-                product = p_res.scalar_one_or_none()
+                # 1. Search Product by SKU first
+                product = None
+                if sku:
+                    p_q = select(Product).where(Product.business_id == business_id, Product.sku == sku)
+                    p_res = await db.execute(p_q)
+                    product = p_res.scalar_one_or_none()
 
+                # 2. Search Product by Name fallback
+                if not product and p_name:
+                    p_q = select(Product).where(Product.business_id == business_id, Product.name.ilike(p_name))
+                    p_res = await db.execute(p_q)
+                    product = p_res.scalar_one_or_none()
+
+                # 3. Create Product with guaranteed unique SKU
                 if not product:
-                    product = Product(business_id=business_id, sku=sku, name=p_name, category="General")
+                    final_sku = sku if sku else ProductService.generate_sku(p_name or "Product")
+                    check_q = select(Product).where(Product.business_id == business_id, Product.sku == final_sku)
+                    check_res = await db.execute(check_q)
+                    if check_res.scalar_one_or_none():
+                        final_sku = ProductService.generate_sku(p_name or "Product")
+
+                    product = Product(business_id=business_id, sku=final_sku, name=p_name or "Product", category="General")
                     db.add(product)
                     await db.flush()
 
-                # Insert Sale
+                # Parse Sale Date if provided
+                sale_dt = datetime.now(timezone.utc)
+                raw_date = s.get("sale_date") if isinstance(s, dict) else getattr(s, "sale_date", None)
+                if raw_date and isinstance(raw_date, str):
+                    try:
+                        sale_dt = datetime.strptime(raw_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    except Exception:
+                        pass
+
+                # Insert Sale record
                 sale = Sale(
                     business_id=business_id,
                     product_id=product.id,
                     quantity=qty,
                     unit_price=u_price,
                     buying_price=b_price,
-                    total_amount=tot
+                    total_amount=tot,
+                    sale_date=sale_dt
                 )
                 db.add(sale)
 

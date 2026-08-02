@@ -144,16 +144,20 @@ async def confirm_sales_upload(
     if not sales_lines:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sales upload session expired.")
 
-    history = await SalesService.confirm_sales_document_import(
-        db=db,
-        business_id=business_id,
-        user_id=current_user.id,
-        filename=request.filename,
-        extracted_sales=sales_lines
-    )
+    try:
+        history = await SalesService.confirm_sales_document_import(
+            db=db,
+            business_id=business_id,
+            user_id=current_user.id,
+            filename=request.filename,
+            extracted_sales=sales_lines
+        )
 
-    _sales_sessions.pop(session_key, None)
-    return {"message": "Sales records committed successfully!", "imported": history.rows_imported}
+        _sales_sessions.pop(session_key, None)
+        return {"message": "Sales records committed successfully!", "imported": history.rows_imported}
+    except Exception as e:
+        logger.error(f"Failed to confirm sales upload for {request.filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to commit sales records: {str(e)}")
 
 
 @router.get(

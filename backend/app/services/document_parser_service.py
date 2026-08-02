@@ -210,36 +210,55 @@ class DocumentParserService:
         groq = GroqService()
         logger.info(f"Extracting document data via Groq AI for '{filename}' ({file_format})...")
 
-        if file_format == "PDF":
-            sample_str = cls.extract_text_from_pdf(content_bytes)
+        if file_format == "IMAGE":
+            import base64
+            b64_str = base64.b64encode(content_bytes).decode("utf-8")
+            messages = [
+                {"role": "system", "content": "You are a specialized retail image & receipt parser. Respond ONLY in valid JSON."},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f"Extract all product items, stock quantities, buying prices, and selling prices from this receipt image ({filename}). Return JSON with key 'items'."},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{b64_str}"
+                            }
+                        }
+                    ]
+                }
+            ]
         else:
-            text_content = content_bytes.decode("latin1", errors="ignore")
-            chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
-            sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
+            if file_format == "PDF":
+                sample_str = cls.extract_text_from_pdf(content_bytes)
+            else:
+                text_content = content_bytes.decode("latin1", errors="ignore")
+                chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
+                sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
 
-        prompt = (
-            f"You are an AI Document & Receipt Data Extractor for an Inventory System.\n"
-            f"File Name: {filename}\nFile Format: {file_format}\n\n"
-            f"Extracted Document Text:\n\"\"\"\n{sample_str[:4000]}\n\"\"\"\n\n"
-            "Extract all products, inventory items, stock arrivals, prices, and suppliers from this document.\n"
-            "Return a JSON object with key 'items' containing a list of items with keys:\n"
-            "- product_name (string, required)\n"
-            "- sku (string or null)\n"
-            "- category (string, default 'General')\n"
-            "- quantity (integer, default 1)\n"
-            "- buying_price (float, default 0.0)\n"
-            "- selling_price (float, default 0.0)\n"
-            "- expiry_date (string YYYY-MM-DD or null)\n"
-            "- supplier_name (string or null)"
-        )
+            prompt = (
+                f"You are an AI Document & Receipt Data Extractor for an Inventory System.\n"
+                f"File Name: {filename}\nFile Format: {file_format}\n\n"
+                f"Extracted Document Text:\n\"\"\"\n{sample_str[:4000]}\n\"\"\"\n\n"
+                "Extract all products, inventory items, stock arrivals, prices, and suppliers from this document.\n"
+                "Return a JSON object with key 'items' containing a list of items with keys:\n"
+                "- product_name (string, required)\n"
+                "- sku (string or null)\n"
+                "- category (string, default 'General')\n"
+                "- quantity (integer, default 1)\n"
+                "- buying_price (float, default 0.0)\n"
+                "- selling_price (float, default 0.0)\n"
+                "- expiry_date (string YYYY-MM-DD or null)\n"
+                "- supplier_name (string or null)"
+            )
 
-        messages = [
-            {"role": "system", "content": "You are a specialized retail document & inventory parser. Respond ONLY in valid JSON."},
-            {"role": "user", "content": prompt}
-        ]
+            messages = [
+                {"role": "system", "content": "You are a specialized retail document & inventory parser. Respond ONLY in valid JSON."},
+                {"role": "user", "content": prompt}
+            ]
 
         try:
-            res_dict = await groq.generate_json_completion(messages)
+            res_dict = await groq.generate_json_completion(messages, model_override="qwen/qwen3.6-27b")
             items = res_dict.get("items") or res_dict.get("products") or res_dict.get("extracted_items") or []
             if isinstance(items, list):
                 return items

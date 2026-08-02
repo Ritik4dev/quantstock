@@ -30,14 +30,15 @@ class GroqService:
 
     async def generate_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: List[Dict[str, Any]],
         temperature: float = 0.7,
         max_tokens: int = 1000,
-        json_mode: bool = False
+        json_mode: bool = False,
+        model_override: Optional[str] = None
     ) -> str:
         """
         Sends chat completion request to Groq API using official AsyncGroq client.
-        Includes retries and timeout error handling.
+        Includes retries and timeout error handling. Supports model_override (e.g. qwen/qwen3.6-27b).
         """
         if not self.is_configured() or not self._client:
             logger.warning("GROQ_API_KEY is not configured. Returning fallback completion.")
@@ -45,13 +46,14 @@ class GroqService:
 
         max_retries = 3
         backoff = 1.0
+        target_model = model_override or self.model
 
         for attempt in range(1, max_retries + 1):
             try:
-                logger.info(f"Sending request to Groq API model='{self.model}', attempt {attempt}/{max_retries}...")
+                logger.info(f"Sending request to Groq API model='{target_model}', attempt {attempt}/{max_retries}...")
                 
                 kwargs = {
-                    "model": self.model,
+                    "model": target_model,
                     "messages": messages,
                     "temperature": temperature,
                     "max_tokens": max_tokens
@@ -86,14 +88,17 @@ class GroqService:
 
     async def generate_json_completion(
         self,
-        messages: List[Dict[str, str]],
-        pydantic_model: Optional[Type[BaseModel]] = None
+        messages: List[Dict[str, Any]],
+        pydantic_model: Optional[Type[BaseModel]] = None,
+        model_override: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Calls Groq API expecting a structured JSON response.
         Parses and validates against pydantic_model if provided.
         """
-        raw_output = await self.generate_completion(messages, temperature=0.2, json_mode=True)
+        raw_output = await self.generate_completion(
+            messages, temperature=0.2, json_mode=True, model_override=model_override
+        )
 
         try:
             # Clean markdown formatting if present
