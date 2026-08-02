@@ -72,7 +72,10 @@ class XGBoostPredictionModel(BasePredictionModel):
         is_weekend = feature_matrix[0][3]
         is_holiday = feature_matrix[0][4]
 
-        base_velocity = r_avg_7d if r_avg_7d > 0 else (r_avg_30d if r_avg_30d > 0 else 1.0)
+        base_velocity = r_avg_7d if r_avg_7d > 0 else (r_avg_30d if r_avg_30d > 0 else 0.0)
+        if base_velocity == 0.0:
+            return 0.0
+
         multiplier = 1.0
         if is_weekend:
             multiplier += 0.25

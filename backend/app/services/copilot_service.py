@@ -149,10 +149,11 @@ class CopilotService:
         brief_prompt = (
             f"Generate a professional Smart Daily Brief for a retail store on {today_str}.\n"
             f"Dashboard Revenue: ${dashboard_cards.todays_sales}, Total Products: {dashboard_cards.total_products}\n"
-            f"Expected 7-day demand: {forecast_overview.total_7d_predicted_units} units\n"
+            f"Expected 7-day demand from DB: {forecast_overview.total_7d_predicted_units} units\n"
             f"Low stock count: {dashboard_cards.products_running_low}\n"
             f"Products to buy: {', '.join(products_to_buy[:5]) or 'None'}\n"
             f"Overall business risk: {risk_scorecard.overall_business_risk_score}/100\n"
+            f"IMPORTANT: If Expected 7-day demand is 0, set expected_sales_today strictly to 0.0.\n"
             "Return JSON matching: greeting, date, expected_sales_today, low_stock_count, products_to_buy, business_opportunities, risks_summary, business_summary."
         )
 
@@ -163,14 +164,17 @@ class CopilotService:
 
         parsed = await self.groq.generate_json_completion(messages)
 
-        exp_sales_raw = parsed.get("expected_sales_today")
-        if exp_sales_raw is None:
-            exp_sales = round(forecast_overview.total_7d_predicted_units / 7.0, 2)
+        if forecast_overview.total_7d_predicted_units == 0:
+            exp_sales = 0.0
         else:
-            try:
-                exp_sales = float(exp_sales_raw)
-            except (ValueError, TypeError):
+            exp_sales_raw = parsed.get("expected_sales_today")
+            if exp_sales_raw is None:
                 exp_sales = round(forecast_overview.total_7d_predicted_units / 7.0, 2)
+            else:
+                try:
+                    exp_sales = float(exp_sales_raw)
+                except (ValueError, TypeError):
+                    exp_sales = round(forecast_overview.total_7d_predicted_units / 7.0, 2)
 
         raw_opps = parsed.get("business_opportunities")
         if isinstance(raw_opps, list):
