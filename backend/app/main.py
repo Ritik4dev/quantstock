@@ -107,7 +107,19 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Health check endpoint
+# Root landing & health check endpoints
+@app.get("/", tags=["Health"])
+async def root():
+    """Root landing endpoint providing API status and Swagger documentation links."""
+    return {
+        "status": "healthy",
+        "app_name": settings.APP_NAME,
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "frontend_url": "http://localhost:3000"
+    }
+
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint to verify server status."""
