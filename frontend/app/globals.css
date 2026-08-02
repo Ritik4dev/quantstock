@@ -1,25 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-base: #070707;
+  --bg-surface: #101010;
+  --bg-card: #151515;
+  --bg-glass: rgba(21, 21, 21, 0.7);
+
+  --accent-primary: #C6FF00;
+  --accent-secondary: #9DFF00;
+  --accent-glow: rgba(198, 255, 0, 0.15);
+  --accent-glow-strong: rgba(198, 255, 0, 0.4);
+
+  --success: #B7FF38;
+  --danger: #FF5B5B;
+  --warning: #FFD84D;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E8E;
+  --text-muted: #555555;
+
+  --border-light: rgba(255, 255, 255, 0.05);
+  --border-highlight: rgba(255, 255, 255, 0.12);
+  --shadow-base: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 16px 40px -10px rgba(0, 0, 0, 0.7), 0 0 30px rgba(198, 255, 0, 0.15);
+  --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  --spring: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-out: 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  --sidebar-width: 280px;
+  --header-height: 80px;
+}
+
 @layer base {
+  * {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
   body {
-    @apply bg-[#0B0F17] text-slate-100 font-sans antialiased min-h-screen selection:bg-indigo-500 selection:text-white;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--accent-primary);
+    color: #000000;
   }
 }
 
-/* Custom scrollbar for dark UI */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Custom Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Animation Keyframes */
+@keyframes pulse-orb {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(198, 255, 0, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(198, 255, 0, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(198, 255, 0, 0); }
 }
-::-webkit-scrollbar-track {
-  background: #0B0F17;
+
+@keyframes radarPulse {
+  0% { transform: scale(0.5); opacity: 0.9; border-color: rgba(198, 255, 0, 0.8); box-shadow: 0 0 20px rgba(198, 255, 0, 0.4); }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.25); opacity: 0; border-color: rgba(198, 255, 0, 0.05); box-shadow: 0 0 0px transparent; }
 }
-::-webkit-scrollbar-thumb {
-  background: #222D3F;
-  border-radius: 9999px;
+
+@keyframes radarSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+
+@keyframes floorMove {
+  from { background-position: 0 0; }
+  to { background-position: 0 32px; }
 }
+
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Helper Utility Classes */
+.pulsing-orb {
+  width: 8px; height: 8px; background: var(--accent-primary); border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-primary);
+  animation: pulse-orb 2s infinite;
+}
+
+.draw-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s var(--spring) forwards;
+}
+
+.btn-inspo-primary {
+  background: var(--accent-primary);
+  color: #000000;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 15px var(--accent-glow-strong);
+  transition: all var(--spring);
+}
+.btn-inspo-primary:hover {
+  background: var(--accent-secondary);
+  box-shadow: 0 6px 20px var(--accent-glow-strong);
+  transform: translateY(-2px);
+}
+
+.card-inspo {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-base), var(--inner-highlight);
+  transition: transform var(--spring), box-shadow var(--spring), border-color var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-inspo:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-float), var(--inner-highlight);
+  border-color: var(--border-highlight);
+}
+
+.card-inspo::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity var(--ease-out);
+}
+.card-inspo:hover::before { opacity: 1; }

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.database.models import User
 from app.database.session import get_db
-from app.schemas.supplier import SupplierCreate, SupplierResponse, SupplierUpdate
+from app.schemas.supplier import AISupplierMappingItem, SupplierCreate, SupplierResponse, SupplierUpdate
 from app.services.business_service import BusinessService
 from app.services.supplier_service import SupplierService
 
@@ -56,6 +56,21 @@ async def get_suppliers(
     business_id = await get_user_first_business_id(db, current_user.id)
     suppliers = await SupplierService.get_suppliers(db, business_id=business_id)
     return suppliers
+
+
+@router.get(
+    "/ai-mapping",
+    response_model=List[AISupplierMappingItem],
+    status_code=status.HTTP_200_OK,
+    summary="Get AI Supplier & Packaging Analysis Mapping",
+    description="Analyzes transaction history, product demand, and supplier lead times to dynamically map products to optimal suppliers and packaging formats."
+)
+async def get_ai_supplier_mapping(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> List[AISupplierMappingItem]:
+    business_id = await get_user_first_business_id(db, current_user.id)
+    return await SupplierService.get_ai_supplier_mapping(db, business_id=business_id)
 
 
 @router.put(

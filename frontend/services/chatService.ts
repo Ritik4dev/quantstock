@@ -14,6 +14,7 @@ export interface ChatPayload {
 export interface ExplainPayload {
   topic: string;
   item_id?: number;
+  context_data?: Record<string, any>;
 }
 
 export const chatService = {

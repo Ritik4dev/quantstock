@@ -29,6 +29,7 @@ from app.api import (
     product,
     recommendation,
     risk,
+    sales,
     supplier,
 )
 from app.core.config import settings
@@ -131,6 +132,7 @@ app.include_router(supplier.router, prefix=settings.API_V1_PREFIX)
 app.include_router(product.router, prefix=settings.API_V1_PREFIX)
 app.include_router(inventory.router, prefix=settings.API_V1_PREFIX)
 app.include_router(csv_import.router, prefix=settings.API_V1_PREFIX)
+app.include_router(sales.router, prefix=settings.API_V1_PREFIX)
 app.include_router(dashboard.router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics.router, prefix=settings.API_V1_PREFIX)
 

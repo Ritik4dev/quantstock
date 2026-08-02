@@ -2,6 +2,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  phone?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -164,6 +165,10 @@ export interface ProductForecast {
   forecast_7d: number;
   forecast_14d: number;
   forecast_30d: number;
+  horizon_7d_units?: number;
+  horizon_30d_units?: number;
+  lead_time_days?: number;
+  recommendation_summary?: string;
   confidence_score: number;
   daily_avg_demand: number;
   weekly_breakdown: WeeklyForecastDay[];

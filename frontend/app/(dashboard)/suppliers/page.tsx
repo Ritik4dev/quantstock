@@ -44,64 +44,64 @@ export default function SuppliersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#151C28] p-6 rounded-2xl border border-[#222D3F]">
+    <div className="space-y-8 fade-in-up">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 card-inspo p-7">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Users className="w-6 h-6 text-indigo-400" />
+            <Users className="w-6 h-6 text-[#C6FF00]" />
             Supplier & Vendor Directory
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-[#8E8E8E] mt-1">
             Manage vendor details, contact persons, and delivery lead time parameters.
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/25 flex items-center gap-2 text-sm"
+          className="px-5 py-2.5 bg-[#C6FF00] hover:bg-[#9DFF00] text-black font-bold rounded-xl transition-all shadow-[0_4px_15px_rgba(198,255,0,0.4)] flex items-center gap-2 text-xs shrink-0 self-start sm:self-center"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 text-black" />
           Add Supplier
         </button>
       </div>
 
       {/* Supplier Grid */}
       {isLoading ? (
-        <div className="p-8 text-center text-slate-400">Loading Suppliers...</div>
+        <div className="p-8 text-center text-xs text-[#8E8E8E] bg-[#101010] rounded-2xl border border-white/5 font-mono">Loading Suppliers...</div>
       ) : suppliers && suppliers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {suppliers.map((s) => (
-            <div key={s.id} className="bg-[#151C28] border border-[#222D3F] p-6 rounded-2xl flex flex-col justify-between space-y-4">
+            <div key={s.id} className="card-inspo p-6 flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-start justify-between">
-                  <h3 className="text-lg font-bold text-white">{s.name}</h3>
+                  <h3 className="text-base font-bold text-white tracking-tight">{s.name}</h3>
                   <button
                     onClick={() => {
                       if (confirm(`Delete supplier '${s.name}'?`)) {
                         deleteMutation.mutate(s.id);
                       }
                     }}
-                    className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors"
+                    className="p-1.5 rounded-xl bg-[#FF5B5B]/10 text-[#FF5B5B] hover:bg-[#FF5B5B]/20 transition-colors border border-[#FF5B5B]/20"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
                 {s.contact_person && (
-                  <p className="text-xs text-indigo-400 font-medium mt-1">Contact: {s.contact_person}</p>
+                  <p className="text-xs text-[#C6FF00] font-semibold mt-1 font-mono">Contact: {s.contact_person}</p>
                 )}
               </div>
 
-              <div className="space-y-2 text-xs text-slate-300 bg-[#0E1420] p-3.5 rounded-xl border border-[#222D3F]">
+              <div className="space-y-2 text-xs text-[#8E8E8E] bg-[#101010] p-4 rounded-2xl border border-white/5 font-mono">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <Mail className="w-3.5 h-3.5 text-[#555555]" />
                   <span>{s.email || 'No email specified'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <Phone className="w-3.5 h-3.5 text-[#555555]" />
                   <span>{s.phone || 'No phone specified'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-amber-400 font-semibold pt-1">
-                  <Clock className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 text-[#FFD84D] font-bold pt-1">
+                  <Clock className="w-3.5 h-3.5 text-[#FFD84D]" />
                   <span>Lead Time: {s.lead_time_days} days</span>
                 </div>
               </div>
@@ -109,18 +109,18 @@ export default function SuppliersPage() {
           ))}
         </div>
       ) : (
-        <div className="p-12 text-center bg-[#151C28] rounded-2xl border border-[#222D3F] text-slate-400">
+        <div className="p-12 text-center bg-[#101010] rounded-2xl border border-white/5 text-xs text-[#8E8E8E]">
           No Data Available
         </div>
       )}
 
       {/* Add Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#151C28] border border-[#222D3F] rounded-2xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4 border-b border-[#222D3F] pb-3">
-              <h2 className="text-lg font-bold text-white">Add New Supplier</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#151515] border border-white/10 rounded-3xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.9)] space-y-4">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <h2 className="text-base font-bold text-white tracking-tight">Add New Supplier</h2>
+              <button onClick={closeModal} className="text-[#8E8E8E] hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -136,56 +136,56 @@ export default function SuppliersPage() {
                   lead_time_days: leadTime,
                 });
               }}
-              className="space-y-3.5"
+              className="space-y-3.5 text-xs"
             >
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Company Name</label>
+                <label className="block text-[10px] font-bold uppercase text-[#555555] mb-1">Company Name</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Amul Dairy Distributors"
-                  className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101010] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#C6FF00]/50"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Contact Person</label>
+                <label className="block text-[10px] font-bold uppercase text-[#555555] mb-1">Contact Person</label>
                 <input
                   type="text"
                   value={contactPerson}
                   onChange={(e) => setContactPerson(e.target.value)}
                   placeholder="e.g. Rajesh Kumar"
-                  className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101010] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#C6FF00]/50"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Email</label>
+                  <label className="block text-[10px] font-bold uppercase text-[#555555] mb-1">Email</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="vendor@supply.com"
-                    className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[#101010] border border-white/5 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#C6FF00]/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Phone</label>
+                  <label className="block text-[10px] font-bold uppercase text-[#555555] mb-1">Phone</label>
                   <input
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[#101010] border border-white/5 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#C6FF00]/50"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                <label className="block text-[10px] font-bold uppercase text-[#555555] mb-1">
                   Delivery Lead Time (Days)
                 </label>
                 <input
@@ -194,22 +194,22 @@ export default function SuppliersPage() {
                   required
                   value={leadTime}
                   onChange={(e) => setLeadTime(parseInt(e.target.value) || 3)}
-                  className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101010] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-[#C6FF00]/50"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/5">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 rounded-xl bg-[#1E2738] text-slate-300 text-sm font-medium"
+                  className="px-4 py-2 rounded-xl bg-[#101010] border border-white/10 text-[#8E8E8E] text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/25 disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-[#C6FF00] hover:bg-[#9DFF00] text-black text-xs font-bold shadow-[0_4px_15px_rgba(198,255,0,0.4)] disabled:opacity-50"
                 >
                   {createMutation.isPending ? 'Saving...' : 'Add Supplier'}
                 </button>

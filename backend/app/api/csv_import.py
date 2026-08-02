@@ -9,15 +9,18 @@ from app.database.session import get_db
 from app.schemas.csv_import import (
     CSVConfirmRequest,
     CSVPreviewResponse,
+    DocumentClarificationAnswer,
+    ExtractedProductItem,
     ImportHistoryResponse,
+    LastUploadStatusResponse,
 )
 from app.services.business_service import BusinessService
 from app.services.csv_import_service import CSVImportService
 
 logger = logging.getLogger("app.api.csv_import")
-router = APIRouter(prefix="/upload", tags=["CSV Import Pipeline"])
+router = APIRouter(prefix="/upload", tags=["Universal Document Upload Pipeline"])
 
-# In-memory storage for active upload previews before confirmation
+# In-memory session cache for preview state before confirmation
 _upload_sessions = {}
 
 
@@ -32,47 +35,108 @@ async def get_user_first_business_id(db: AsyncSession, user_id: int) -> int:
 
 
 @router.post(
-    "/csv",
+    "/document",
     response_model=CSVPreviewResponse,
     status_code=status.HTTP_200_OK,
-    summary="Upload & validate CSV file",
-    description="Validates CSV headers, auto-maps columns, checks row data, and returns a detailed validation preview report."
+    summary="Upload & extract multi-format document (CSV, Excel, PDF, Image, TXT)",
+    description="Parses tabular or unstructured files, extracts items via Groq AI, calculates additive stock preview, and evaluates missing attributes."
 )
-async def upload_csv(
+async def upload_document(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> CSVPreviewResponse:
-    if not file.filename or not file.filename.endswith(".csv"):
+    if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file type. Please upload a valid .csv file."
+            detail="Uploaded file has no filename."
         )
 
     content = await file.read()
     if not content:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded CSV file is empty."
+            detail="Uploaded file is empty."
         )
 
-    preview_res = await CSVImportService.process_and_preview(file.filename, content)
-    
-    # Store session cache for confirmation step
+    business_id = await get_user_first_business_id(db, current_user.id)
+
+    preview_res = await CSVImportService.process_and_preview(
+        db=db, business_id=business_id, filename=file.filename, content_bytes=content
+    )
+
+    # Store preview cache for confirmation / clarification step
     session_key = f"{current_user.id}_{file.filename}"
-    _upload_sessions[session_key] = content
+    _upload_sessions[session_key] = preview_res.extracted_items
 
     return preview_res
 
 
 @router.post(
-    "/csv/confirm",
+    "/csv",
+    response_model=CSVPreviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Upload & validate document (Legacy CSV route alias)",
+)
+async def upload_csv(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> CSVPreviewResponse:
+    """Alias for /upload/document to preserve complete backward compatibility."""
+    return await upload_document(file=file, current_user=current_user, db=db)
+
+
+@router.post(
+    "/clarify",
+    response_model=CSVPreviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Submit answers to AI missing data clarification chat",
+    description="Updates preview extracted items with answers supplied by user in the interactive AI clarification chat."
+)
+async def clarify_document_data(
+    payload: DocumentClarificationAnswer,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> CSVPreviewResponse:
+    business_id = await get_user_first_business_id(db, current_user.id)
+    session_key = f"{current_user.id}_{payload.filename}"
+
+    # Update session items with clarification input
+    updated_items = payload.extracted_items
+
+    # Apply global answers if provided
+    answers = payload.answers or {}
+    for item in updated_items:
+        if "buying_price" in answers and (item.buying_price == 0.0 or item.buying_price is None):
+            item.buying_price = float(answers["buying_price"])
+        if "selling_price" in answers and (item.selling_price == 0.0 or item.selling_price is None):
+            item.selling_price = float(answers["selling_price"])
+        if "category" in answers and (not item.category or item.category == "General"):
+            item.category = str(answers["category"])
+
+    _upload_sessions[session_key] = updated_items
+
+    return CSVPreviewResponse(
+        filename=payload.filename,
+        total_rows=len(updated_items),
+        valid_rows_count=len(updated_items),
+        invalid_rows_count=0,
+        extracted_items=updated_items,
+        is_ready_for_import=True,
+        requires_clarification=False,
+        missing_fields_prompt="All missing data clarified successfully by AI chat!"
+    )
+
+
+@router.post(
+    "/confirm",
     response_model=ImportHistoryResponse,
     status_code=status.HTTP_200_OK,
-    summary="Confirm and commit CSV import to PostgreSQL",
-    description="Executes a single-transaction database commit of valid CSV products and inventory. Rolls back on error."
+    summary="Confirm and commit document import to PostgreSQL with additive stock sync",
+    description="Executes a single-transaction database commit. Adds newly arrived quantity to existing product stock additively (5 + 5 = 10)."
 )
-async def confirm_csv_import(
+async def confirm_document_import(
     request: CSVConfirmRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -80,17 +144,18 @@ async def confirm_csv_import(
     if not request.confirm:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Import confirmation set to False. CSV data was not saved."
+            detail="Import confirmation set to False. Data was not saved."
         )
 
     business_id = await get_user_first_business_id(db, current_user.id)
     session_key = f"{current_user.id}_{request.filename}"
 
-    content_bytes = _upload_sessions.get(session_key)
-    if not content_bytes:
+    extracted_items = request.extracted_items or _upload_sessions.get(session_key)
+
+    if not extracted_items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Upload session for file '{request.filename}' expired or not found. Please upload the CSV again."
+            detail=f"Upload session for file '{request.filename}' expired or not found. Please upload the file again."
         )
 
     history = await CSVImportService.confirm_and_import(
@@ -98,27 +163,55 @@ async def confirm_csv_import(
         business_id=business_id,
         user_id=current_user.id,
         filename=request.filename,
-        content_bytes=content_bytes,
-        mapping=request.column_mapping
+        extracted_items=extracted_items
     )
 
-    # Clean up session
+    # Clear session cache
     _upload_sessions.pop(session_key, None)
 
     return history
+
+
+@router.post(
+    "/csv/confirm",
+    response_model=ImportHistoryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Confirm legacy CSV import route alias"
+)
+async def confirm_csv_import(
+    request: CSVConfirmRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> ImportHistoryResponse:
+    """Alias for /upload/confirm for backward compatibility."""
+    return await confirm_document_import(request=request, current_user=current_user, db=db)
+
+
+@router.get(
+    "/last-status",
+    response_model=LastUploadStatusResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get last document upload status and timestamp",
+    description="Retrieves the most recent upload audit log summary for rendering the frontend UI status banner."
+)
+async def get_last_upload_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> LastUploadStatusResponse:
+    business_id = await get_user_first_business_id(db, current_user.id)
+    return await CSVImportService.get_last_upload_status(db, business_id=business_id)
 
 
 @router.get(
     "/history",
     response_model=List[ImportHistoryResponse],
     status_code=status.HTTP_200_OK,
-    summary="Get CSV import audit history",
-    description="Retrieves history logs of previous CSV uploads and import operations."
+    summary="Get document import audit history log",
+    description="Retrieves history logs of previous document uploads and import operations."
 )
 async def get_import_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> List[ImportHistoryResponse]:
     business_id = await get_user_first_business_id(db, current_user.id)
-    history_logs = await CSVImportService.get_import_history(db, business_id=business_id)
-    return history_logs
+    return await CSVImportService.get_import_history(db, business_id=business_id)
