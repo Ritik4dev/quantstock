@@ -180,58 +180,147 @@ class SalesService:
         Returns extracted sales lines for preview.
         """
         fmt = DocumentParserService.detect_format(filename)
-        groq = GroqService()
         logger.info(f"Parsing sales document '{filename}' ({fmt})...")
 
-        text_content = content_bytes.decode("latin1", errors="ignore")
-        chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
-        sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
+        raw_sales: List[Dict[str, Any]] = []
 
-        prompt = (
-            f"You are a Sales Receipt & Daily Register Data Extractor.\n"
-            f"File Name: {filename}\nFile Format: {fmt}\n\n"
-            f"Extracted Document Text:\n\"\"\"\n{sample_str[:4000]}\n\"\"\"\n\n"
-            "Extract all completed sales transactions from this document.\n"
-            "Return a JSON object with key 'sales' containing a list of sales lines with keys:\n"
-            "- product_name (string, required)\n"
-            "- sku (string or null)\n"
-            "- quantity_sold (integer, default 1)\n"
-            "- unit_price (float, default 0.0)\n"
-            "- buying_price (float, default 0.0)\n"
-            "- total_amount (float, default 0.0)\n"
-            "- sale_date (string YYYY-MM-DD or null)"
-        )
+        if fmt in ["CSV", "TXT"]:
+            raw_sales = await DocumentParserService._parse_tabular_csv(content_bytes)
+        elif fmt == "PDF":
+            pdf_text = DocumentParserService.extract_text_from_pdf(content_bytes)
+            # Try tabular parsing on PDF text if comma/tab/line structured
+            if pdf_text and ("," in pdf_text or "\t" in pdf_text):
+                raw_sales = await DocumentParserService._parse_tabular_csv(pdf_text.encode("utf-8"))
 
-        messages = [
-            {"role": "system", "content": "You are an expert sales transaction parser. Respond ONLY in valid JSON."},
-            {"role": "user", "content": prompt}
-        ]
+        if not raw_sales:
+            # Fallback to Groq AI extraction (Qwen model)
+            groq = GroqService()
+            if fmt == "IMAGE":
+                import base64
+                b64_str = base64.b64encode(content_bytes).decode("utf-8")
+                messages = [
+                    {"role": "system", "content": "You are an expert sales transaction parser. Respond ONLY in valid JSON."},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": f"Extract all completed sales transactions from this image ({filename}). Return a JSON object with key 'sales' containing a list of sales lines with keys: product_name, sku, quantity_sold, unit_price, buying_price, total_amount, sale_date."},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{b64_str}"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            else:
+                if fmt == "PDF":
+                    sample_str = DocumentParserService.extract_text_from_pdf(content_bytes)
+                else:
+                    text_content = content_bytes.decode("latin1", errors="ignore")
+                    chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
+                    sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
+
+                prompt = (
+                    f"You are a Sales Receipt & Daily Register Data Extractor.\n"
+                    f"File Name: {filename}\nFile Format: {fmt}\n\n"
+                    f"Extracted Document Text:\n\"\"\"\n{sample_str[:4000]}\n\"\"\"\n\n"
+                    "Extract all completed sales transactions from this document.\n"
+                    "Return a JSON object with key 'sales' containing a list of sales lines with keys:\n"
+                    "- product_name (string, required)\n"
+                    "- sku (string or null)\n"
+                    "- quantity_sold (integer, default 1)\n"
+                    "- unit_price (float, default 0.0)\n"
+                    "- buying_price (float, default 0.0)\n"
+                    "- total_amount (float, default 0.0)\n"
+                    "- sale_date (string YYYY-MM-DD or null)"
+                )
+
+                messages = [
+                    {"role": "system", "content": "You are an expert sales transaction parser. Respond ONLY in valid JSON."},
+                    {"role": "user", "content": prompt}
+                ]
+
+            try:
+                res_dict = await groq.generate_json_completion(messages, model_override="qwen/qwen3.6-27b")
+                raw_sales = res_dict.get("sales") or res_dict.get("extracted_sales") or res_dict.get("items") or []
+            except Exception as e:
+                logger.error(f"Groq sales extraction failed: {e}")
+
+        # Column Alias Normalization
+        def norm(k: Any) -> str:
+            if not k:
+                return ""
+            return str(k).strip('\ufeff"\' \t\r\n').lower().replace(" ", "").replace("_", "").replace("-", "")
+
+        def extract_val(row_norm: Dict[str, Any], aliases: List[str]) -> str:
+            for alias in aliases:
+                if alias in row_norm and row_norm[alias] is not None:
+                    val = str(row_norm[alias]).strip()
+                    if val and val.lower() not in ("none", "null", "nan"):
+                        return val
+            return ""
+
+        NAME_ALIASES = ["productname", "itemname", "product", "item", "name", "title", "description", "rawrow"]
+        SKU_ALIASES = ["sku", "code", "itemcode", "barcode", "productcode"]
+        QTY_ALIASES = ["quantitysold", "quantity", "qty", "unitsold", "count", "sold"]
+        PRICE_ALIASES = ["unitprice", "sellingprice", "price", "rate", "mrp", "saleprice"]
+        COST_ALIASES = ["buyingprice", "cost", "buyingcost", "purchaseprice", "costprice"]
+        TOTAL_ALIASES = ["totalamount", "total", "amount", "revenue", "totalsale"]
+        DATE_ALIASES = ["saledate", "date", "timestamp", "transactiondate", "time"]
 
         extracted_lines: List[ExtractedSaleLine] = []
         tot_rev = 0.0
 
-        try:
-            res_dict = await groq.generate_json_completion(messages)
-            raw_sales = res_dict.get("sales") or res_dict.get("extracted_sales") or []
-            if isinstance(raw_sales, list):
-                for s in raw_sales:
-                    p_name = str(s.get("product_name") or "Product").strip()
-                    qty = int(s.get("quantity_sold") or s.get("quantity") or 1)
-                    u_price = float(s.get("unit_price") or s.get("price") or 0.0)
-                    b_price = float(s.get("buying_price") or s.get("cost") or 0.0)
-                    tot = float(s.get("total_amount") or (qty * u_price))
-                    tot_rev += tot
-                    extracted_lines.append(ExtractedSaleLine(
-                        product_name=p_name,
-                        sku=s.get("sku"),
-                        quantity_sold=qty,
-                        unit_price=u_price,
-                        buying_price=b_price,
-                        total_amount=round(tot, 2),
-                        sale_date=s.get("sale_date")
-                    ))
-        except Exception as e:
-            logger.error(f"Groq sales document extraction failed ({e}). Returning heuristic fallback.")
+        for item in raw_sales:
+            if not isinstance(item, dict):
+                continue
+
+            row_norm = {norm(k): v for k, v in item.items() if k is not None}
+            p_name = extract_val(row_norm, NAME_ALIASES) or str(item.get("product_name") or "Product").strip()
+
+            if not p_name or p_name.lower() == "product":
+                if "raw_row" in item:
+                    p_name = str(item["raw_row"])[:40]
+
+            sku = extract_val(row_norm, SKU_ALIASES) or None
+
+            qty_str = extract_val(row_norm, QTY_ALIASES)
+            try:
+                qty = int(float(qty_str)) if qty_str else 1
+            except Exception:
+                qty = 1
+
+            u_price_str = extract_val(row_norm, PRICE_ALIASES)
+            try:
+                u_price = float(u_price_str) if u_price_str else 0.0
+            except Exception:
+                u_price = 0.0
+
+            b_price_str = extract_val(row_norm, COST_ALIASES)
+            try:
+                b_price = float(b_price_str) if b_price_str else 0.0
+            except Exception:
+                b_price = 0.0
+
+            tot_str = extract_val(row_norm, TOTAL_ALIASES)
+            try:
+                tot = float(tot_str) if tot_str else (qty * u_price)
+            except Exception:
+                tot = qty * u_price
+
+            tot_rev += tot
+            s_date = extract_val(row_norm, DATE_ALIASES) or None
+
+            extracted_lines.append(ExtractedSaleLine(
+                product_name=p_name,
+                sku=sku,
+                quantity_sold=qty,
+                unit_price=u_price,
+                buying_price=b_price,
+                total_amount=round(tot, 2),
+                sale_date=s_date
+            ))
 
         return SalesDocumentPreviewResponse(
             filename=filename,
@@ -249,7 +338,7 @@ class SalesService:
         business_id: int,
         user_id: int,
         filename: str,
-        extracted_sales: List[ExtractedSaleLine]
+        extracted_sales: List[Any]
     ) -> ImportHistory:
         """
         Commits extracted sales transactions into PostgreSQL and AUTO-DECREMENTS Inventory stock per product.
@@ -258,37 +347,112 @@ class SalesService:
         rows_failed = 0
         fmt = DocumentParserService.detect_format(filename)
 
+        def safe_str(val: Any, default: str = "") -> str:
+            if val is None:
+                return default
+            s = str(val).strip()
+            return s if s.lower() not in ("none", "null", "nan") else default
+
+        def safe_float(val: Any, default: float = 0.0) -> float:
+            if val is None:
+                return default
+            if isinstance(val, (int, float)):
+                return float(val)
+            s = str(val).replace(",", "").strip()
+            match = re.search(r"\d+\.?\d*|\.\d+", s)
+            if match:
+                try:
+                    return float(match.group(0))
+                except Exception:
+                    return default
+            return default
+
+        def safe_int(val: Any, default: int = 1) -> int:
+            if val is None:
+                return default
+            if isinstance(val, int):
+                return val
+            if isinstance(val, float):
+                return int(val)
+            s = str(val).strip()
+            match = re.search(r"\d+", s)
+            if match:
+                try:
+                    return int(match.group(0))
+                except Exception:
+                    return default
+            return default
+
         try:
             for s in extracted_sales:
-                p_name = s.product_name.strip()
+                if isinstance(s, dict):
+                    raw_name = s.get("product_name") or s.get("name") or s.get("item") or ""
+                    p_name = safe_str(raw_name)
+                    sku_raw = s.get("sku")
+                    sku = safe_str(sku_raw, "")
+                    qty = max(1, safe_int(s.get("quantity_sold") or s.get("quantity"), 1))
+                    u_price = max(0.0, safe_float(s.get("unit_price") or s.get("price"), 0.0))
+                    b_price = max(0.0, safe_float(s.get("buying_price") or s.get("cost"), 0.0))
+                    tot_amount = safe_float(s.get("total_amount"), 0.0)
+                    tot = round(qty * u_price, 2) if tot_amount == 0.0 else tot_amount
+                else:
+                    raw_name = getattr(s, "product_name", "") or getattr(s, "name", "")
+                    p_name = safe_str(raw_name)
+                    sku_raw = getattr(s, "sku", "")
+                    sku = safe_str(sku_raw, "")
+                    qty = max(1, safe_int(getattr(s, "quantity_sold", 1), 1))
+                    u_price = max(0.0, safe_float(getattr(s, "unit_price", 0.0), 0.0))
+                    b_price = max(0.0, safe_float(getattr(s, "buying_price", 0.0), 0.0))
+                    tot_amount = safe_float(getattr(s, "total_amount", 0.0), 0.0)
+                    tot = round(qty * u_price, 2) if tot_amount == 0.0 else tot_amount
+
                 if not p_name:
                     rows_failed += 1
                     continue
 
-                sku = s.sku.strip() if s.sku else ProductService.generate_sku(p_name)
-                qty = max(1, s.quantity_sold)
-                u_price = max(0.0, s.unit_price)
-                b_price = max(0.0, s.buying_price)
-                tot = round(qty * u_price, 2) if s.total_amount == 0.0 else s.total_amount
+                # 1. Search Product by SKU first
+                product = None
+                if sku:
+                    p_q = select(Product).where(Product.business_id == business_id, Product.sku == sku)
+                    p_res = await db.execute(p_q)
+                    product = p_res.scalar_one_or_none()
 
-                # Find or Create Product
-                p_q = select(Product).where(Product.business_id == business_id, Product.name.ilike(p_name))
-                p_res = await db.execute(p_q)
-                product = p_res.scalar_one_or_none()
+                # 2. Search Product by Name fallback
+                if not product and p_name:
+                    p_q = select(Product).where(Product.business_id == business_id, Product.name.ilike(p_name))
+                    p_res = await db.execute(p_q)
+                    product = p_res.scalar_one_or_none()
 
+                # 3. Create Product with guaranteed unique SKU
                 if not product:
-                    product = Product(business_id=business_id, sku=sku, name=p_name, category="General")
+                    final_sku = sku if sku else ProductService.generate_sku(p_name or "Product")
+                    check_q = select(Product).where(Product.business_id == business_id, Product.sku == final_sku)
+                    check_res = await db.execute(check_q)
+                    if check_res.scalar_one_or_none():
+                        final_sku = ProductService.generate_sku(p_name or "Product")
+
+                    product = Product(business_id=business_id, sku=final_sku, name=p_name or "Product", category="General")
                     db.add(product)
                     await db.flush()
 
-                # Insert Sale
+                # Parse Sale Date if provided
+                sale_dt = datetime.now(timezone.utc)
+                raw_date = s.get("sale_date") if isinstance(s, dict) else getattr(s, "sale_date", None)
+                if raw_date and isinstance(raw_date, str):
+                    try:
+                        sale_dt = datetime.strptime(raw_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    except Exception:
+                        pass
+
+                # Insert Sale record
                 sale = Sale(
                     business_id=business_id,
                     product_id=product.id,
                     quantity=qty,
                     unit_price=u_price,
                     buying_price=b_price,
-                    total_amount=tot
+                    total_amount=tot,
+                    sale_date=sale_dt
                 )
                 db.add(sale)
 

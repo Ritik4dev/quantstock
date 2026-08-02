@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { formatApiError } from '@/utils/error';
 import { Store, Bot, Check, Sparkles, AlertCircle, UploadCloud } from 'lucide-react';
 import UniversalDocumentUploadModal from '@/components/inventory/UniversalDocumentUploadModal';
+import SalesDocumentUploadModal from '@/components/pos/SalesDocumentUploadModal';
 
 export default function AIDiscoveryPage() {
   const router = useRouter();
@@ -23,8 +24,9 @@ export default function AIDiscoveryPage() {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Document Upload Modal state
+  // Document Upload Modal states
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
 
   const interviewMutation = useMutation({
     mutationFn: (userText: string) => {
@@ -97,19 +99,20 @@ export default function AIDiscoveryPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
-            onClick={() => router.push('/ai-discovery/analysis-summary')}
-            className="px-4 py-2.5 rounded-xl bg-[#151515] hover:bg-white/[0.04] text-white border border-white/10 text-xs font-bold transition-all shrink-0"
+            onClick={() => setIsSalesModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(99,102,241,0.4)] transition-all flex items-center gap-2 shrink-0"
           >
-            Audit Summary Report
+            <UploadCloud className="w-4 h-4 text-white" />
+            Upload Sales Log / Receipts
           </button>
           <button
             onClick={() => setIsDocModalOpen(true)}
             className="px-5 py-2.5 rounded-xl bg-[#C6FF00] hover:bg-[#9DFF00] text-black text-xs font-bold shadow-[0_4px_15px_rgba(198,255,0,0.4)] transition-all flex items-center gap-2 shrink-0"
           >
             <UploadCloud className="w-4 h-4 text-black" />
-            Upload Document / CSV
+            Upload Inventory CSV
           </button>
         </div>
       </div>
@@ -121,18 +124,26 @@ export default function AIDiscoveryPage() {
             <UploadCloud className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-tight">Have CSV, Excel, or Image Invoices?</h3>
+            <h3 className="text-sm font-bold text-white tracking-tight">Have Inventory or Sales CSV / Receipt Files?</h3>
             <p className="text-xs text-[#8E8E8E] mt-0.5">
-              Upload your documents directly here. AI will extract all products and auto-sync to PostgreSQL.
+              Upload sales registers or product inventory files. AI will extract transactions and auto-sync directly to PostgreSQL.
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setIsDocModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-[#151515] hover:bg-white/[0.04] text-[#C6FF00] border border-white/10 text-xs font-bold transition-all shrink-0"
-        >
-          Open Document Upload
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setIsSalesModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-[#151515] hover:bg-white/[0.04] text-indigo-400 border border-white/10 text-xs font-bold transition-all"
+          >
+            Sales CSV Upload
+          </button>
+          <button
+            onClick={() => setIsDocModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-[#151515] hover:bg-white/[0.04] text-[#C6FF00] border border-white/10 text-xs font-bold transition-all"
+          >
+            Inventory CSV Upload
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -264,6 +275,18 @@ export default function AIDiscoveryPage() {
         onUploadSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['inventory'] });
           queryClient.invalidateQueries({ queryKey: ['storeAnalysisSummary'] });
+        }}
+      />
+
+      {/* Sales Document Upload Modal */}
+      <SalesDocumentUploadModal
+        isOpen={isSalesModalOpen}
+        onClose={() => setIsSalesModalOpen(false)}
+        onUploadSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['inventory'] });
+          queryClient.invalidateQueries({ queryKey: ['financialAnalytics'] });
+          queryClient.invalidateQueries({ queryKey: ['storeAnalysisSummary'] });
+          queryClient.invalidateQueries({ queryKey: ['dailyBrief'] });
         }}
       />
     </div>

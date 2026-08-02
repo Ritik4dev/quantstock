@@ -111,14 +111,16 @@ async def upload_sales_document(
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is empty.")
 
+    clean_filename = os.path.basename(file.filename)
     business_id = await get_user_first_business_id(db, current_user.id)
 
     preview_res = await SalesService.parse_sales_document(
-        db=db, business_id=business_id, filename=file.filename, content_bytes=content
+        db=db, business_id=business_id, filename=clean_filename, content_bytes=content
     )
 
-    session_key = f"{current_user.id}_{file.filename}"
+    session_key = f"{current_user.id}_{clean_filename}"
     _sales_sessions[session_key] = preview_res.extracted_sales
+    _sales_sessions[f"{current_user.id}_{file.filename}"] = preview_res.extracted_sales
 
     return preview_res
 
@@ -137,23 +139,28 @@ async def confirm_sales_upload(
     if not request.confirm:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation is False.")
 
+    clean_filename = os.path.basename(request.filename)
     business_id = await get_user_first_business_id(db, current_user.id)
-    session_key = f"{current_user.id}_{request.filename}"
+    session_key = f"{current_user.id}_{clean_filename}"
 
-    sales_lines = request.extracted_sales or _sales_sessions.get(session_key)
+    sales_lines = request.extracted_sales or _sales_sessions.get(session_key) or _sales_sessions.get(f"{current_user.id}_{request.filename}")
     if not sales_lines:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sales upload session expired.")
 
-    history = await SalesService.confirm_sales_document_import(
-        db=db,
-        business_id=business_id,
-        user_id=current_user.id,
-        filename=request.filename,
-        extracted_sales=sales_lines
-    )
+    try:
+        history = await SalesService.confirm_sales_document_import(
+            db=db,
+            business_id=business_id,
+            user_id=current_user.id,
+            filename=request.filename,
+            extracted_sales=sales_lines
+        )
 
-    _sales_sessions.pop(session_key, None)
-    return {"message": "Sales records committed successfully!", "imported": history.rows_imported}
+        _sales_sessions.pop(session_key, None)
+        return {"message": "Sales records committed successfully!", "imported": history.rows_imported}
+    except Exception as e:
+        logger.error(f"Failed to confirm sales upload for {request.filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to commit sales records: {str(e)}")
 
 
 @router.get(

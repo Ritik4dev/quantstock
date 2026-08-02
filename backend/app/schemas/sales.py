@@ -61,7 +61,7 @@ class SalesDocumentPreviewResponse(BaseModel):
 class SalesConfirmRequest(BaseModel):
     """Request to commit preview sales lines to PostgreSQL and deduct inventory stock."""
     filename: str
-    extracted_sales: List[ExtractedSaleLine]
+    extracted_sales: Optional[List[Dict[str, Any]]] = None
     confirm: bool = Field(True, description="Must be true to commit transaction")
 
 

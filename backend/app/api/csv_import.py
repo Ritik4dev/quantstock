@@ -59,15 +59,17 @@ async def upload_document(
             detail="Uploaded file is empty."
         )
 
+    clean_filename = os.path.basename(file.filename)
     business_id = await get_user_first_business_id(db, current_user.id)
 
     preview_res = await CSVImportService.process_and_preview(
-        db=db, business_id=business_id, filename=file.filename, content_bytes=content
+        db=db, business_id=business_id, filename=clean_filename, content_bytes=content
     )
 
     # Store preview cache for confirmation / clarification step
-    session_key = f"{current_user.id}_{file.filename}"
+    session_key = f"{current_user.id}_{clean_filename}"
     _upload_sessions[session_key] = preview_res.extracted_items
+    _upload_sessions[f"{current_user.id}_{file.filename}"] = preview_res.extracted_items
 
     return preview_res
 
@@ -99,8 +101,9 @@ async def clarify_document_data(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> CSVPreviewResponse:
+    clean_filename = os.path.basename(payload.filename)
     business_id = await get_user_first_business_id(db, current_user.id)
-    session_key = f"{current_user.id}_{payload.filename}"
+    session_key = f"{current_user.id}_{clean_filename}"
 
     # Update session items with clarification input
     updated_items = payload.extracted_items
@@ -116,6 +119,7 @@ async def clarify_document_data(
             item.category = str(answers["category"])
 
     _upload_sessions[session_key] = updated_items
+    _upload_sessions[f"{current_user.id}_{payload.filename}"] = updated_items
 
     return CSVPreviewResponse(
         filename=payload.filename,
@@ -136,6 +140,12 @@ async def clarify_document_data(
     summary="Confirm and commit document import to PostgreSQL with additive stock sync",
     description="Executes a single-transaction database commit. Adds newly arrived quantity to existing product stock additively (5 + 5 = 10)."
 )
+@router.post(
+    "/confirm-csv",
+    response_model=ImportHistoryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Confirm and commit document import to PostgreSQL (Alias)",
+)
 async def confirm_document_import(
     request: CSVConfirmRequest,
     current_user: User = Depends(get_current_user),
@@ -147,10 +157,11 @@ async def confirm_document_import(
             detail="Import confirmation set to False. Data was not saved."
         )
 
+    clean_filename = os.path.basename(request.filename)
     business_id = await get_user_first_business_id(db, current_user.id)
-    session_key = f"{current_user.id}_{request.filename}"
+    session_key = f"{current_user.id}_{clean_filename}"
 
-    extracted_items = request.extracted_items or _upload_sessions.get(session_key)
+    extracted_items = request.extracted_items or _upload_sessions.get(session_key) or _upload_sessions.get(f"{current_user.id}_{request.filename}")
 
     if not extracted_items:
         raise HTTPException(

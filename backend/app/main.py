@@ -80,16 +80,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Configuration
+# CORS Configuration for Cloudflare Tunnels & Local Development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_origin_regex=r"https?://.*",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -111,7 +107,19 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Health check endpoint
+# Root landing & health check endpoints
+@app.get("/", tags=["Health"])
+async def root():
+    """Root landing endpoint providing API status and Swagger documentation links."""
+    return {
+        "status": "healthy",
+        "app_name": settings.APP_NAME,
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "frontend_url": "http://localhost:3000"
+    }
+
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint to verify server status."""
