@@ -159,6 +159,47 @@ class DocumentParserService:
                 return []
 
     @classmethod
+    def extract_text_from_pdf(cls, content_bytes: bytes) -> str:
+        """Extract clean text from PDF bytes using pypdf and zlib fallback."""
+        text_pages = []
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(content_bytes))
+            for page in reader.pages:
+                txt = page.extract_text()
+                if txt and txt.strip():
+                    text_pages.append(txt.strip())
+        except Exception as e:
+            logger.warning(f"pypdf extraction error: {e}")
+
+        if text_pages:
+            return "\n".join(text_pages)
+
+        # Fallback zlib stream decompression
+        try:
+            import zlib
+            streams = re.findall(b"stream[\r\n]+(.*?)[\r\n]+endstream", content_bytes, re.DOTALL)
+            decompressed_text = []
+            for s in streams:
+                try:
+                    decomp = zlib.decompress(s)
+                    clean = re.sub(r"[^\x20-\x7E\t\n\r]", " ", decomp.decode("latin1", errors="ignore"))
+                    clean_lines = [l.strip() for l in clean.split("\n") if len(l.strip()) > 3]
+                    if clean_lines:
+                        decompressed_text.append("\n".join(clean_lines))
+                except Exception:
+                    pass
+            if decompressed_text:
+                return "\n".join(decompressed_text)
+        except Exception as e:
+            logger.warning(f"zlib stream fallback error: {e}")
+
+        # Final plain text fallback
+        text_content = content_bytes.decode("latin1", errors="ignore")
+        chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
+        return "\n".join(chunks[:200]) if chunks else text_content[:4000]
+
+    @classmethod
     async def _parse_with_groq_ai(
         cls, filename: str, content_bytes: bytes, file_format: str
     ) -> List[Dict[str, Any]]:
@@ -169,11 +210,12 @@ class DocumentParserService:
         groq = GroqService()
         logger.info(f"Extracting document data via Groq AI for '{filename}' ({file_format})...")
 
-        # Decode printable text snippet
-        text_content = content_bytes.decode("latin1", errors="ignore")
-        # Extract readable string chunks
-        chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
-        sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
+        if file_format == "PDF":
+            sample_str = cls.extract_text_from_pdf(content_bytes)
+        else:
+            text_content = content_bytes.decode("latin1", errors="ignore")
+            chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
+            sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
 
         prompt = (
             f"You are an AI Document & Receipt Data Extractor for an Inventory System.\n"

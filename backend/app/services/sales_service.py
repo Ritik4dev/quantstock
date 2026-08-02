@@ -186,13 +186,21 @@ class SalesService:
 
         if fmt in ["CSV", "TXT"]:
             raw_sales = await DocumentParserService._parse_tabular_csv(content_bytes)
+        elif fmt == "PDF":
+            pdf_text = DocumentParserService.extract_text_from_pdf(content_bytes)
+            # Try tabular parsing on PDF text if comma/tab/line structured
+            if pdf_text and ("," in pdf_text or "\t" in pdf_text):
+                raw_sales = await DocumentParserService._parse_tabular_csv(pdf_text.encode("utf-8"))
 
         if not raw_sales:
             # Fallback to Groq AI extraction
             groq = GroqService()
-            text_content = content_bytes.decode("latin1", errors="ignore")
-            chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
-            sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
+            if fmt == "PDF":
+                sample_str = DocumentParserService.extract_text_from_pdf(content_bytes)
+            else:
+                text_content = content_bytes.decode("latin1", errors="ignore")
+                chunks = re.findall(r"[\x20-\x7E\t\n\r]{10,}", text_content)
+                sample_str = "\n".join(chunks[:150]) if chunks else text_content[:2000]
 
             prompt = (
                 f"You are a Sales Receipt & Daily Register Data Extractor.\n"
@@ -216,7 +224,7 @@ class SalesService:
 
             try:
                 res_dict = await groq.generate_json_completion(messages)
-                raw_sales = res_dict.get("sales") or res_dict.get("extracted_sales") or []
+                raw_sales = res_dict.get("sales") or res_dict.get("extracted_sales") or res_dict.get("items") or []
             except Exception as e:
                 logger.error(f"Groq sales extraction failed: {e}")
 
@@ -322,16 +330,27 @@ class SalesService:
 
         try:
             for s in extracted_sales:
-                p_name = s.product_name.strip()
+                if isinstance(s, dict):
+                    raw_name = s.get("product_name") or s.get("name") or ""
+                    p_name = str(raw_name).strip()
+                    sku_raw = s.get("sku")
+                    sku = str(sku_raw).strip() if sku_raw else ProductService.generate_sku(p_name or "Product")
+                    qty = max(1, int(s.get("quantity_sold") or s.get("quantity") or 1))
+                    u_price = max(0.0, float(s.get("unit_price") or s.get("price") or 0.0))
+                    b_price = max(0.0, float(s.get("buying_price") or s.get("cost") or 0.0))
+                    tot_amount = float(s.get("total_amount") or 0.0)
+                    tot = round(qty * u_price, 2) if tot_amount == 0.0 else tot_amount
+                else:
+                    p_name = s.product_name.strip()
+                    sku = s.sku.strip() if s.sku else ProductService.generate_sku(p_name or "Product")
+                    qty = max(1, s.quantity_sold)
+                    u_price = max(0.0, s.unit_price)
+                    b_price = max(0.0, s.buying_price)
+                    tot = round(qty * u_price, 2) if s.total_amount == 0.0 else s.total_amount
+
                 if not p_name:
                     rows_failed += 1
                     continue
-
-                sku = s.sku.strip() if s.sku else ProductService.generate_sku(p_name)
-                qty = max(1, s.quantity_sold)
-                u_price = max(0.0, s.unit_price)
-                b_price = max(0.0, s.buying_price)
-                tot = round(qty * u_price, 2) if s.total_amount == 0.0 else s.total_amount
 
                 # Find or Create Product
                 p_q = select(Product).where(Product.business_id == business_id, Product.name.ilike(p_name))
