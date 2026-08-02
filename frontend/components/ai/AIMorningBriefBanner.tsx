@@ -22,7 +22,7 @@ export default function AIMorningBriefBanner() {
       return;
     }
 
-    const textToSpeak = `${brief.greeting}. Expected sales today are ${brief.expected_sales_today} units. You have ${brief.low_stock_count} low stock warnings. Key opportunities: ${brief.business_opportunities.join(', ')}. ${brief.business_summary}`;
+    const textToSpeak = `${briefData?.greeting || 'Good morning!'}. Expected revenue today is $${expRev}. You have ${alertCount} inventory alerts. ${briefData?.business_summary || ''}`;
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.rate = 1.0;
@@ -51,7 +51,25 @@ export default function AIMorningBriefBanner() {
     );
   }
 
-  if (!brief) return null;
+  let briefData: any = brief;
+  if (typeof brief === 'string') {
+    try {
+      briefData = JSON.parse(brief);
+    } catch (e) {
+      briefData = undefined;
+    }
+  }
+
+  if (!briefData) return null;
+
+  const expRev = typeof briefData.sales_forecast?.expected_revenue_usd === 'number'
+    ? briefData.sales_forecast.expected_revenue_usd
+    : 0.0;
+  const expOrders = typeof briefData.sales_forecast?.expected_order_count === 'number'
+    ? briefData.sales_forecast.expected_order_count
+    : 0;
+  const alertCount = Array.isArray(briefData.inventory_alerts) ? briefData.inventory_alerts.length : 0;
+  const reportDate = briefData.report_date || briefData.date || '';
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#11140A] via-[#151515] to-[#101010] border border-[#C6FF00]/20 p-7 shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(198,255,0,0.05)]">
@@ -64,26 +82,26 @@ export default function AIMorningBriefBanner() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#C6FF00]/10 text-[#C6FF00] border border-[#C6FF00]/20">
               <Sparkles className="w-3.5 h-3.5 text-[#C6FF00] animate-pulse" />
-              AI Morning Intelligence
+              AI Operational Summary
             </span>
-            <span className="text-xs text-[#8E8E8E] font-mono">{brief.date}</span>
+            <span className="text-xs text-[#8E8E8E] font-mono">{reportDate}</span>
           </div>
 
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            {brief.greeting}
+            {briefData.greeting}
           </h2>
 
           <p className="text-xs sm:text-sm text-[#8E8E8E] leading-relaxed max-w-3xl">
-            {brief.business_summary}
+            {briefData.business_summary}
           </p>
 
           {/* Key Opportunities Pills */}
-          {brief.business_opportunities && brief.business_opportunities.length > 0 && (
+          {briefData.business_opportunities && briefData.business_opportunities.length > 0 && (
             <div className="pt-1 flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold uppercase text-[#555555] tracking-wider">
                 Priority Actions:
               </span>
-              {brief.business_opportunities.map((opp, idx) => (
+              {briefData.business_opportunities.map((opp: string, idx: number) => (
                 <span
                   key={idx}
                   className="px-2.5 py-1 rounded-xl text-xs bg-[#101010] text-[#C6FF00] border border-white/5 flex items-center gap-1 font-medium"
@@ -101,20 +119,20 @@ export default function AIMorningBriefBanner() {
           <div className="flex items-center gap-4 bg-[#101010] p-4 rounded-2xl border border-white/5">
             <div>
               <div className="text-[10px] uppercase font-bold text-[#555555] tracking-wider">
-                Expected Sales Today
+                Expected Revenue Today
               </div>
               <div className="text-xl font-extrabold text-[#C6FF00] font-mono">
-                {brief.expected_sales_today} <span className="text-xs font-normal text-[#8E8E8E]">units</span>
+                ${expRev.toFixed(2)} <span className="text-xs font-normal text-[#8E8E8E]">({expOrders} orders)</span>
               </div>
             </div>
             <div className="h-8 w-[1px] bg-white/5" />
             <div>
               <div className="text-[10px] uppercase font-bold text-[#555555] tracking-wider">
-                Low Stock Warnings
+                Inventory Alerts
               </div>
               <div className="text-xl font-extrabold text-[#FFD84D] flex items-center gap-1 font-mono">
                 <AlertTriangle className="w-4 h-4 text-[#FFD84D] shrink-0" />
-                {brief.low_stock_count}
+                {alertCount}
               </div>
             </div>
           </div>
