@@ -1,17 +1,19 @@
 import uuid
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import ChatMessage, ChatSession, Product
+from app.database.models import ChatMessage, ChatSession, Product, Inventory, Sale
 from app.schemas.copilot import (
     ChatResponse,
     DailyBriefResponse,
     ExplainResponse,
     ReportSummaryResponse,
+    SalesForecastSchema,
+    InventoryAlertSchema,
 )
 from app.services.analytics_service import AnalyticsService
 from app.services.business_context_service import BusinessContextService
@@ -135,73 +137,119 @@ class CopilotService:
         self, db: AsyncSession, business_id: int
     ) -> DailyBriefResponse:
         """
-        Generates Executive Smart Daily Brief combining Analytics, Forecasts, Recommendations, and Risks.
+        Generates Executive Smart Daily Brief strictly following the user's Dynamic Business Operations Analyst spec:
+        1. NO FAKE OR HARDCODED VALUES: Calculates metrics directly from PostgreSQL.
+        2. DYNAMIC CALCULATIONS:
+           - expected_revenue_usd: 7-day rolling average revenue. +15% if target date is a weekend.
+           - expected_order_count: 7-day rolling average order volume.
+           - inventory_alerts: Items where stock_quantity <= reorder_level. If none, [].
+        3. STRICT FORMATTING: Currency keys ending in _usd.
         """
-        today_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
+        now = datetime.now(timezone.utc)
+        today_str = now.strftime("%B %d, %Y")
+        is_weekend = now.weekday() >= 5
 
-        dashboard_cards = await DashboardService.get_dashboard_cards(db, business_id)
-        forecast_overview = await self.forecast_service.predict_all_products_forecast(db, business_id)
-        recs_overview = await self.recommendation_service.get_all_recommendations(db, business_id)
-        risk_scorecard = await self.risk_engine.get_risk_scorecard(db, business_id)
-
-        products_to_buy = [r.product_name for r in recs_overview.recommendations if r.recommended_order_quantity > 0]
+        # 1. Dynamic Sales Forecast Calculation from PostgreSQL
+        seven_days_ago = now - timedelta(days=7)
+        sales_q = select(
+            func.coalesce(func.sum(Sale.total_amount), 0.0),
+            func.count(Sale.id)
+        ).where(
+            Sale.business_id == business_id,
+            Sale.sale_date >= seven_days_ago
+        )
+        sales_res = await db.execute(sales_q)
+        sales_row = sales_res.fetchone()
         
+        total_7d_revenue = float(sales_row[0]) if sales_row else 0.0
+        total_7d_orders = int(sales_row[1]) if sales_row else 0
+
+        if total_7d_orders > 0:
+            avg_daily_rev = total_7d_revenue / 7.0
+            if is_weekend:
+                avg_daily_rev *= 1.15
+            expected_revenue_usd = round(avg_daily_rev, 2)
+            expected_order_count = int(round(total_7d_orders / 7.0))
+        else:
+            expected_revenue_usd = 0.0
+            expected_order_count = 0
+
+        # 2. Dynamic Inventory Alerts Calculation from PostgreSQL
+        inv_q = (
+            select(Inventory)
+            .where(
+                Inventory.business_id == business_id,
+                Inventory.current_stock <= Inventory.minimum_stock
+            )
+            .options(selectinload(Inventory.product))
+        )
+        inv_res = await db.execute(inv_q)
+        alert_items = inv_res.scalars().all()
+
+        inventory_alerts: List[InventoryAlertSchema] = []
+        for inv in alert_items:
+            p_name = inv.product.name if inv.product else f"Item #{inv.product_id}"
+            inventory_alerts.append(InventoryAlertSchema(
+                item_id=str(inv.product_id),
+                item_name=p_name,
+                current_stock=inv.current_stock,
+                reorder_level=inv.minimum_stock,
+                action_required="REORDER_IMMEDIATE"
+            ))
+
+        # 3. Dynamic Business Opportunities & Summary from Backend Services
+        analytics = await AnalyticsService.get_analytics_overview(db, business_id)
+        best_seller_name = analytics.best_sellers[0].name if analytics.best_sellers else "top products"
+
         brief_prompt = (
-            f"Generate a professional Smart Daily Brief for a retail store on {today_str}.\n"
-            f"Dashboard Revenue: ${dashboard_cards.todays_sales}, Total Products: {dashboard_cards.total_products}\n"
-            f"Expected 7-day demand from DB: {forecast_overview.total_7d_predicted_units} units\n"
-            f"Low stock count: {dashboard_cards.products_running_low}\n"
-            f"Products to buy: {', '.join(products_to_buy[:5]) or 'None'}\n"
-            f"Overall business risk: {risk_scorecard.overall_business_risk_score}/100\n"
-            f"IMPORTANT: If Expected 7-day demand is 0, set expected_sales_today strictly to 0.0.\n"
-            "Return JSON matching: greeting, date, expected_sales_today, low_stock_count, products_to_buy, business_opportunities, risks_summary, business_summary."
+            f"SYSTEM PROMPT: Dynamic Business Operations Analyst\n"
+            f"You are an automated business analysis engine. Process this raw database payload:\n"
+            f"- Report Date: {today_str}\n"
+            f"- Weekend Target Date: {is_weekend}\n"
+            f"- Expected Revenue USD: ${expected_revenue_usd}\n"
+            f"- Expected Order Count: {expected_order_count}\n"
+            f"- Inventory Alerts Count: {len(inventory_alerts)}\n"
+            f"- Top Selling Item: {best_seller_name}\n\n"
+            "Return JSON matching:\n"
+            "{\n"
+            "  \"greeting\": \"Good morning! Here is your daily operational summary.\",\n"
+            "  \"business_opportunities\": [\"Actionable advice targeting top selling item\"],\n"
+            "  \"business_summary\": \"Summary derived from sales trend and inventory status\"\n"
+            "}"
         )
 
         messages = [
-            {"role": "system", "content": "You are a Retail Operations Copilot generating daily briefings as structured JSON."},
+            {"role": "system", "content": "You are a Retail Operations Analyst generating clean JSON summaries."},
             {"role": "user", "content": brief_prompt}
         ]
 
-        parsed = await self.groq.generate_json_completion(messages)
-
-        if forecast_overview.total_7d_predicted_units == 0:
-            exp_sales = 0.0
-        else:
-            exp_sales_raw = parsed.get("expected_sales_today")
-            if exp_sales_raw is None:
-                exp_sales = round(forecast_overview.total_7d_predicted_units / 7.0, 2)
-            else:
-                try:
-                    exp_sales = float(exp_sales_raw)
-                except (ValueError, TypeError):
-                    exp_sales = round(forecast_overview.total_7d_predicted_units / 7.0, 2)
+        try:
+            parsed = await self.groq.generate_json_completion(messages)
+        except Exception:
+            parsed = {}
 
         raw_opps = parsed.get("business_opportunities")
-        if isinstance(raw_opps, list):
-            biz_opps = [str(x) if not isinstance(x, dict) else json.dumps(x) for x in raw_opps]
-        elif isinstance(raw_opps, dict):
-            biz_opps = [f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in raw_opps.items()]
-        elif isinstance(raw_opps, str):
-            biz_opps = [raw_opps]
+        if isinstance(raw_opps, list) and raw_opps:
+            biz_opps = [str(x) for x in raw_opps]
         else:
-            biz_opps = ["Focus on top-selling inventory restocking"]
+            biz_opps = [f"Focus restocking and promotional campaigns on '{best_seller_name}'."]
 
         raw_summary = parsed.get("business_summary")
-        if isinstance(raw_summary, dict):
-            biz_summary = ". ".join([f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in raw_summary.items()])
-        elif isinstance(raw_summary, str):
-            biz_summary = raw_summary
+        if isinstance(raw_summary, str) and raw_summary.strip():
+            biz_summary = raw_summary.strip()
         else:
-            biz_summary = "Store operations are running steadily with verified database context."
+            biz_summary = f"Store operations running with ${expected_revenue_usd} predicted daily revenue and {len(inventory_alerts)} active inventory reorder alerts."
 
         return DailyBriefResponse(
-            greeting=str(parsed.get("greeting", "Good morning! Here is your daily operational summary.")),
-            date=today_str,
-            expected_sales_today=exp_sales,
-            low_stock_count=dashboard_cards.products_running_low,
-            products_to_buy=products_to_buy[:5],
+            greeting="Good morning! Here is your daily operational summary.",
+            report_date=today_str,
+            sales_forecast=SalesForecastSchema(
+                expected_revenue_usd=expected_revenue_usd,
+                expected_order_count=expected_order_count,
+                calculation_basis="Based on 7-day rolling average with day-of-week weighting"
+            ),
+            inventory_alerts=inventory_alerts,
             business_opportunities=biz_opps,
-            risks_summary=f"Business risk index is {risk_scorecard.overall_business_risk_score}/100 with {risk_scorecard.stockout_risk_count} low stock warnings.",
             business_summary=biz_summary
         )
 

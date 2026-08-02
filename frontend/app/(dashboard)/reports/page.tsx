@@ -53,21 +53,21 @@ export default function ReportsPage() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-white tracking-tight">{dailyBrief?.greeting || 'Good Morning!'}</h2>
-            <p className="text-xs text-[#8E8E8E] font-mono">{dailyBrief?.date}</p>
+            <p className="text-xs text-[#8E8E8E] font-mono">{dailyBrief?.report_date}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
-            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Expected Sales Today</div>
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Expected Revenue Today</div>
             <div className="text-2xl font-extrabold text-[#B7FF38] mt-1 font-mono">
-              {dailyBrief ? dailyBrief.expected_sales_today : 0} units
+              ${dailyBrief?.sales_forecast?.expected_revenue_usd.toFixed(2) || '0.00'}
             </div>
           </div>
           <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
-            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Low Stock Warnings</div>
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Inventory Alerts</div>
             <div className="text-2xl font-extrabold text-[#FFD84D] mt-1 font-mono">
-              {dailyBrief ? dailyBrief.low_stock_count : 0} items
+              {dailyBrief?.inventory_alerts?.length || 0} items
             </div>
           </div>
         </div>

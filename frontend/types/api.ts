@@ -240,14 +240,26 @@ export interface ChatResponse {
   suggested_followups: string[];
 }
 
+export interface SalesForecast {
+  expected_revenue_usd: number;
+  expected_order_count: number;
+  calculation_basis: string;
+}
+
+export interface InventoryAlert {
+  item_id: string;
+  item_name: string;
+  current_stock: number;
+  reorder_level: number;
+  action_required: string;
+}
+
 export interface DailyBriefResponse {
   greeting: string;
-  date: string;
-  expected_sales_today: number;
-  low_stock_count: number;
-  products_to_buy: string[];
+  report_date: string;
+  sales_forecast: SalesForecast;
+  inventory_alerts: InventoryAlert[];
   business_opportunities: string[];
-  risks_summary: string;
   business_summary: string;
 }
 

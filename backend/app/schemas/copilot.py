@@ -33,15 +33,27 @@ class ChatSessionHistoryResponse(BaseModel):
     messages: List[ChatMessageSchema] = Field(default_factory=list)
 
 
+class SalesForecastSchema(BaseModel):
+    expected_revenue_usd: float
+    expected_order_count: int
+    calculation_basis: str = "Based on 7-day rolling average with day-of-week weighting"
+
+
+class InventoryAlertSchema(BaseModel):
+    item_id: str
+    item_name: str
+    current_stock: int
+    reorder_level: int
+    action_required: str = "REORDER_IMMEDIATE"
+
+
 class DailyBriefResponse(BaseModel):
-    """Smart Executive Daily Brief response."""
-    greeting: str
-    date: str
-    expected_sales_today: float
-    low_stock_count: int
-    products_to_buy: List[str]
-    business_opportunities: List[str]
-    risks_summary: str
+    """Smart Executive Daily Brief response matching user system prompt specification."""
+    greeting: str = "Good morning! Here is your daily operational summary."
+    report_date: str
+    sales_forecast: SalesForecastSchema
+    inventory_alerts: List[InventoryAlertSchema] = Field(default_factory=list)
+    business_opportunities: List[str] = Field(default_factory=list)
     business_summary: str
 
 
