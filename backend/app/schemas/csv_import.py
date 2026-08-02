@@ -46,7 +46,7 @@ class CSVPreviewResponse(BaseModel):
     total_rows: int
     valid_rows_count: int
     invalid_rows_count: int
-    column_mapping: Optional[ColumnMapping] = None
+    column_mapping: Optional[Any] = Field(default_factory=dict)
     detected_headers: List[str] = []
     preview_data: List[Dict[str, Any]] = []
     extracted_items: List[ExtractedProductItem] = []

@@ -143,22 +143,24 @@ export default function CSVUploadPage() {
           </div>
 
           {/* Mapped Columns */}
-          <div>
-            <h3 className="text-xs font-bold text-[#8E8E8E] uppercase tracking-wider mb-3">Auto-Mapped Columns</h3>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(preview.column_mapping).map(([standardCol, rawCol]) => (
-                <span
-                  key={standardCol}
-                  className="px-3 py-1.5 rounded-xl bg-[#101010] border border-white/5 text-xs font-mono text-[#8E8E8E]"
-                >
-                  <span className="text-[#C6FF00] font-bold">{standardCol}</span> ← <span>{rawCol}</span>
-                </span>
-              ))}
+          {preview.column_mapping && Object.keys(preview.column_mapping).length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold text-[#8E8E8E] uppercase tracking-wider mb-3">Auto-Mapped Columns</h3>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(preview.column_mapping).map(([standardCol, rawCol]) => (
+                  <span
+                    key={standardCol}
+                    className="px-3 py-1.5 rounded-xl bg-[#101010] border border-white/5 text-xs font-mono text-[#8E8E8E]"
+                  >
+                    <span className="text-[#C6FF00] font-bold">{standardCol}</span> ← <span>{rawCol}</span>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Sample Data Table */}
-          {preview.preview_data && preview.preview_data.length > 0 && (
+          {preview.preview_data && preview.preview_data.length > 0 && preview.preview_data[0] && (
             <div>
               <h3 className="text-xs font-bold text-[#8E8E8E] uppercase tracking-wider mb-3">Preview Sample Rows</h3>
               <div className="overflow-x-auto rounded-2xl border border-white/5">
@@ -175,11 +177,11 @@ export default function CSVUploadPage() {
                   <tbody className="divide-y divide-white/[0.02]">
                     {preview.preview_data.map((row, idx) => (
                       <tr key={idx} className="hover:bg-white/[0.025] transition-colors">
-                        {Object.values(row).map((val: any, vIdx) => (
+                        {row && typeof row === 'object' ? Object.values(row).map((val: any, vIdx) => (
                           <td key={vIdx} className="px-3.5 py-2.5 text-white font-mono">
-                            {String(val)}
+                            {String(val ?? '')}
                           </td>
-                        ))}
+                        )) : null}
                       </tr>
                     ))}
                   </tbody>
