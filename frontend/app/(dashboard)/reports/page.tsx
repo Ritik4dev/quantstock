@@ -31,95 +31,95 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#151C28] p-6 rounded-2xl border border-[#222D3F]">
+    <div className="space-y-8 fade-in-up">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 card-inspo p-7">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <FileText className="w-6 h-6 text-indigo-400" />
+            <FileText className="w-6 h-6 text-[#C6FF00]" />
             Executive Reports & Smart Daily Briefing
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-[#8E8E8E] mt-1">
             Grounded operational summaries, financial period analysis, and metric explainers.
           </p>
         </div>
       </div>
 
       {/* Smart Daily Brief */}
-      <div className="bg-gradient-to-r from-indigo-900/40 via-surface to-surface p-6 rounded-2xl border border-indigo-500/30 space-y-4">
+      <div className="bg-gradient-to-r from-[#11140A] via-[#151515] to-[#101010] p-7 rounded-3xl border border-[#C6FF00]/20 space-y-5 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+          <div className="w-11 h-11 rounded-2xl bg-[#FFD84D]/10 text-[#FFD84D] flex items-center justify-center border border-[#FFD84D]/20">
             <Sun className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">{dailyBrief?.greeting || 'Good Morning!'}</h2>
-            <p className="text-xs text-slate-400">{dailyBrief?.date}</p>
+            <h2 className="text-lg font-bold text-white tracking-tight">{dailyBrief?.greeting || 'Good Morning!'}</h2>
+            <p className="text-xs text-[#8E8E8E] font-mono">{dailyBrief?.date}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="bg-[#0E1420] p-4 rounded-xl border border-[#222D3F]">
-            <div className="text-xs text-slate-400 uppercase font-semibold">Expected Sales Today</div>
-            <div className="text-xl font-bold text-emerald-400 mt-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Expected Sales Today</div>
+            <div className="text-2xl font-extrabold text-[#B7FF38] mt-1 font-mono">
               {dailyBrief ? dailyBrief.expected_sales_today : 0} units
             </div>
           </div>
-          <div className="bg-[#0E1420] p-4 rounded-xl border border-[#222D3F]">
-            <div className="text-xs text-slate-400 uppercase font-semibold">Low Stock Warnings</div>
-            <div className="text-xl font-bold text-amber-400 mt-1">
+          <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Low Stock Warnings</div>
+            <div className="text-2xl font-extrabold text-[#FFD84D] mt-1 font-mono">
               {dailyBrief ? dailyBrief.low_stock_count : 0} items
             </div>
           </div>
         </div>
 
         {dailyBrief?.business_summary && (
-          <div className="p-4 bg-[#0E1420] rounded-xl border border-[#222D3F] text-sm text-slate-300">
-            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Store Overview Summary</h3>
-            <p>{dailyBrief.business_summary}</p>
+          <div className="p-4.5 bg-[#101010] rounded-2xl border border-white/5 text-xs text-[#8E8E8E] leading-relaxed">
+            <h3 className="text-[10px] font-bold text-[#C6FF00] uppercase tracking-wider mb-1.5">Store Overview Summary</h3>
+            <p className="text-white">{dailyBrief.business_summary}</p>
           </div>
         )}
       </div>
 
       {/* 30-Day Executive Report Summary */}
-      <div className="bg-[#151C28] border border-[#222D3F] p-6 rounded-2xl space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-emerald-400" />
+      <div className="card-inspo p-7 space-y-5">
+        <h2 className="text-base font-bold text-white flex items-center gap-2 tracking-tight">
+          <TrendingUp className="w-4 h-4 text-[#B7FF38]" />
           30-Day Financial Performance Executive Report
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-[#0E1420] p-4 rounded-xl border border-[#222D3F]">
-            <div className="text-xs text-slate-400 uppercase font-semibold">Period Revenue</div>
-            <div className="text-xl font-bold text-white mt-1">
+          <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Period Revenue</div>
+            <div className="text-2xl font-extrabold text-white mt-1 font-mono">
               ${reportSummary ? reportSummary.total_revenue.toLocaleString() : '0'}
             </div>
           </div>
-          <div className="bg-[#0E1420] p-4 rounded-xl border border-[#222D3F]">
-            <div className="text-xs text-slate-400 uppercase font-semibold">Period Net Profit</div>
-            <div className="text-xl font-bold text-emerald-400 mt-1">
+          <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Period Net Profit</div>
+            <div className="text-2xl font-extrabold text-[#B7FF38] mt-1 font-mono">
               ${reportSummary ? reportSummary.total_profit.toLocaleString() : '0'}
             </div>
           </div>
-          <div className="bg-[#0E1420] p-4 rounded-xl border border-[#222D3F]">
-            <div className="text-xs text-slate-400 uppercase font-semibold">Inventory Health Score</div>
-            <div className="text-xl font-bold text-indigo-400 mt-1">
+          <div className="bg-[#101010] p-4.5 rounded-2xl border border-white/5">
+            <div className="text-[10px] text-[#8E8E8E] uppercase font-bold tracking-wider">Inventory Health Score</div>
+            <div className="text-2xl font-extrabold text-[#C6FF00] mt-1 font-mono">
               {reportSummary ? reportSummary.inventory_health_score : 0} / 100
             </div>
           </div>
         </div>
 
         {reportSummary?.executive_summary && (
-          <div className="p-4 bg-[#0E1420] rounded-xl border border-[#222D3F] text-sm text-slate-200 leading-relaxed">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Detailed Executive Analysis</h3>
+          <div className="p-4.5 bg-[#101010] rounded-2xl border border-white/5 text-xs text-white leading-relaxed">
+            <h3 className="text-[10px] font-bold text-[#8E8E8E] uppercase tracking-wider mb-2">Detailed Executive Analysis</h3>
             <p className="whitespace-pre-wrap">{reportSummary.executive_summary}</p>
           </div>
         )}
       </div>
 
       {/* Metric Explainer Component */}
-      <div className="bg-[#151C28] border border-[#222D3F] p-6 rounded-2xl space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-violet-400" />
+      <div className="card-inspo p-7 space-y-5">
+        <h2 className="text-base font-bold text-white flex items-center gap-2 tracking-tight">
+          <HelpCircle className="w-4 h-4 text-[#C6FF00]" />
           Natural Language Metric & Strategy Explainer
         </h2>
 
@@ -129,21 +129,21 @@ export default function ReportsPage() {
             value={explainTopic}
             onChange={(e) => setExplainTopic(e.target.value)}
             placeholder="e.g. Stockout Risk, Reorder Quantity Calculation, Clearance Discounts..."
-            className="flex-1 w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="flex-1 w-full bg-[#101010] border border-white/5 rounded-2xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#C6FF00]/50 placeholder-[#555555]"
           />
           <button
             onClick={() => explainMutation.mutate(explainTopic)}
             disabled={explainMutation.isPending}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-indigo-600/25 flex items-center gap-2 disabled:opacity-50 shrink-0"
+            className="px-6 py-3 bg-[#C6FF00] hover:bg-[#9DFF00] text-black font-bold rounded-2xl text-xs shadow-[0_4px_15px_rgba(198,255,0,0.4)] flex items-center gap-2 disabled:opacity-50 shrink-0 transition-all"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-4 h-4 text-black" />
             {explainMutation.isPending ? 'Generating Explanation...' : 'Explain Metric'}
           </button>
         </div>
 
         {explanationResult && (
-          <div className="p-4 bg-[#0E1420] rounded-xl border border-[#222D3F] text-sm text-slate-200 leading-relaxed">
-            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
+          <div className="p-4.5 bg-[#101010] rounded-2xl border border-white/5 text-xs text-white leading-relaxed">
+            <h3 className="text-[10px] font-bold text-[#C6FF00] uppercase tracking-wider mb-2">
               Explanation for: {explainTopic}
             </h3>
             <p className="whitespace-pre-wrap">{explanationResult}</p>

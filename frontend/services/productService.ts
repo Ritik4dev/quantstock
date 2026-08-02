@@ -1,6 +1,8 @@
 import { apiClient } from './apiClient';
 import { Product } from '@/types/api';
 
+export type { Product };
+
 export interface CreateProductPayload {
   name: string;
   sku?: string;
@@ -9,8 +11,8 @@ export interface CreateProductPayload {
 }
 
 export const productService = {
-  getProducts: async (): Promise<Product[]> => {
-    const res = await apiClient.get<Product[]>('/products');
+  getProducts: async (search?: string): Promise<Product[]> => {
+    const res = await apiClient.get<Product[]>('/products', { params: search ? { search } : undefined });
     return res.data;
   },
 

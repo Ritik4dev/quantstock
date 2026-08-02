@@ -16,6 +16,7 @@ import {
   Bot,
   FileText,
   Store,
+  Settings,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -33,6 +34,7 @@ const navItems = [
   { name: 'AI Business Copilot', href: '/chat', icon: Bot },
   { name: 'Reports & Briefs', href: '/reports', icon: FileText },
   { name: 'AI Discovery', href: '/ai-discovery', icon: Store },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -46,22 +48,22 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-[#151C28] border-r border-[#222D3F] flex flex-col h-screen sticky top-0 z-40">
+    <aside className="w-[280px] min-w-[280px] max-w-[280px] bg-[#101010] border-r border-white/5 flex flex-col h-screen sticky top-0 z-40">
       {/* Brand Header */}
-      <div className="p-5 border-b border-[#222D3F] flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <Bot className="w-5 h-5 text-white" />
+      <div className="p-6 border-b border-white/5 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#C6FF00] to-[#6B8E00] flex items-center justify-center text-black shadow-[0_0_15px_rgba(198,255,0,0.2)] font-bold">
+          <Bot className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="font-bold text-white tracking-wide text-lg">Quadstock AI</h1>
-          <p className="text-xs text-slate-400 font-medium">Retail Management</p>
+          <h1 className="font-extrabold text-white tracking-tight text-lg">QuantStock AI</h1>
+          <p className="text-[11px] text-[#8E8E8E] font-medium tracking-wide">Retail Operating System</p>
         </div>
       </div>
 
       {/* Store Context Badge */}
-      <div className="px-4 py-3 bg-[#0E1420] border-b border-[#222D3F]">
-        <div className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Active Business</div>
-        <div className="text-sm font-medium text-slate-200 truncate">
+      <div className="px-5 py-3.5 bg-[#151515]/60 border-b border-white/5">
+        <div className="text-[10px] uppercase tracking-wider text-[#555555] font-bold mb-0.5">Active Business</div>
+        <div className="text-xs font-semibold text-white truncate">
           {activeBusiness ? activeBusiness.business_name : 'Retail Store Hub'}
         </div>
       </div>
@@ -75,24 +77,27 @@ export default function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center justify-between px-4 py-3 rounded-xl text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#1E2738]'
+                  ? 'bg-gradient-to-r from-[#C6FF00]/12 to-transparent text-[#C6FF00] border-l-4 border-[#C6FF00] font-bold shadow-[0_0_15px_rgba(198,255,0,0.05)]'
+                  : 'text-[#8E8E8E] hover:text-white hover:bg-white/[0.025] hover:border-white/5 border border-transparent'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
-              <span>{item.name}</span>
+              <div className="flex items-center gap-3">
+                <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#C6FF00]' : 'text-[#8E8E8E]'}`} />
+                <span>{item.name}</span>
+              </div>
+              {isActive && <div className="w-1.5 h-1.5 rounded-full bg-[#C6FF00] shadow-[0_0_8px_#C6FF00]" />}
             </Link>
           );
         })}
       </nav>
 
       {/* Footer & Logout */}
-      <div className="p-4 border-t border-[#222D3F]">
+      <div className="p-4 border-t border-white/5">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-medium text-[#FF5B5B] hover:bg-[#FF5B5B]/10 transition-colors border border-transparent hover:border-[#FF5B5B]/20"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>

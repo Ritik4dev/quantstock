@@ -42,4 +42,9 @@ export const aiDiscoveryService = {
     const res = await apiClient.post<BusinessProfile>('/ai/confirm', payload);
     return res.data;
   },
+
+  getAnalysisSummary: async (): Promise<any> => {
+    const res = await apiClient.get<any>('/ai/analysis-summary');
+    return res.data;
+  },
 };

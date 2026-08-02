@@ -4,6 +4,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { recommendationService } from '@/services/recommendationService';
 import { Sparkles, ShoppingCart, Tag, AlertTriangle, ShieldCheck } from 'lucide-react';
+import ExplainWithAIButton from '@/components/ai/ExplainWithAIButton';
 
 export default function RecommendationsPage() {
   const { data: recs, isLoading } = useQuery({
@@ -16,100 +17,112 @@ export default function RecommendationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#151C28] p-6 rounded-2xl border border-[#222D3F]">
+    <div className="space-y-8 fade-in-up">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 card-inspo p-7">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-emerald-400" />
+            <Sparkles className="w-6 h-6 text-[#C6FF00]" />
             Inventory Recommendations & Reorder Engine
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-[#8E8E8E] mt-1">
             Calculated reorder quantities, safety stock margins, supplier lead times, and clearance strategies.
           </p>
         </div>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#151C28] border border-[#222D3F] p-5 rounded-2xl">
-          <div className="text-xs font-semibold uppercase text-slate-400">Recommended Reorder Units</div>
-          <div className="text-2xl font-bold text-emerald-400 mt-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="card-inspo p-6 flex flex-col justify-between h-[130px]">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#8E8E8E]">Recommended Reorder Units</div>
+          <div className="text-3xl font-extrabold text-[#C6FF00] tracking-tight font-mono">
             {recs ? recs.total_recommended_reorder_units : 0} units
           </div>
         </div>
-        <div className="bg-[#151C28] border border-[#222D3F] p-5 rounded-2xl">
-          <div className="text-xs font-semibold uppercase text-slate-400">Estimated Purchase Cost</div>
-          <div className="text-2xl font-bold text-white mt-2">
+        <div className="card-inspo p-6 flex flex-col justify-between h-[130px]">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#8E8E8E]">Estimated Purchase Cost</div>
+          <div className="text-3xl font-extrabold text-white tracking-tight font-mono">
             ${recs ? recs.total_estimated_reorder_cost.toLocaleString() : '0'}
           </div>
         </div>
-        <div className="bg-[#151C28] border border-[#222D3F] p-5 rounded-2xl">
-          <div className="text-xs font-semibold uppercase text-slate-400">High Priority Reorders</div>
-          <div className="text-2xl font-bold text-amber-400 mt-2">
+        <div className="card-inspo p-6 flex flex-col justify-between h-[130px]">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#8E8E8E]">High Priority Reorders</div>
+          <div className="text-3xl font-extrabold text-[#FFD84D] tracking-tight font-mono">
             {recs ? recs.high_priority_reorders_count : 0}
           </div>
         </div>
-        <div className="bg-[#151C28] border border-[#222D3F] p-5 rounded-2xl">
-          <div className="text-xs font-semibold uppercase text-slate-400">Clearance Action Items</div>
-          <div className="text-2xl font-bold text-violet-400 mt-2">
+        <div className="card-inspo p-6 flex flex-col justify-between h-[130px]">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#8E8E8E]">Clearance Action Items</div>
+          <div className="text-3xl font-extrabold text-[#B7FF38] tracking-tight font-mono">
             {recs ? recs.clearance_items_count : 0}
           </div>
         </div>
       </div>
 
       {/* Recommendations Table */}
-      <div className="bg-[#151C28] border border-[#222D3F] p-6 rounded-2xl">
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5 text-indigo-400" />
+      <div className="card-inspo p-6 space-y-4">
+        <h2 className="text-base font-bold text-white flex items-center gap-2 tracking-tight">
+          <ShoppingCart className="w-4 h-4 text-[#C6FF00]" />
           Actionable Procurement & Clearance Recommendations
         </h2>
 
         {recs?.recommendations && recs.recommendations.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-[#0E1420] text-xs uppercase text-slate-400 border-b border-[#222D3F]">
+            <table className="w-full text-left text-xs text-[#8E8E8E]">
+              <thead className="text-[11px] font-semibold text-[#555555] uppercase border-b border-white/5">
                 <tr>
-                  <th className="px-4 py-3.5 font-semibold">SKU</th>
-                  <th className="px-4 py-3.5 font-semibold">Product Name</th>
-                  <th className="px-4 py-3.5 font-semibold">Current Stock</th>
-                  <th className="px-4 py-3.5 font-semibold">Reorder Qty</th>
-                  <th className="px-4 py-3.5 font-semibold">Safety Stock</th>
-                  <th className="px-4 py-3.5 font-semibold">Action Type</th>
-                  <th className="px-4 py-3.5 font-semibold">Action Reason</th>
+                  <th className="pb-3 px-3 font-semibold">SKU</th>
+                  <th className="pb-3 px-3 font-semibold">Product Name</th>
+                  <th className="pb-3 px-3 font-semibold">Current Stock</th>
+                  <th className="pb-3 px-3 font-semibold">Reorder Qty</th>
+                  <th className="pb-3 px-3 font-semibold">Safety Stock</th>
+                  <th className="pb-3 px-3 font-semibold">Action Type</th>
+                  <th className="pb-3 px-3 font-semibold">Action Reason</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#222D3F]">
+              <tbody className="divide-y divide-white/[0.02]">
                 {recs.recommendations.map((r) => (
-                  <tr key={r.product_id} className="hover:bg-[#1E2738]/50">
-                    <td className="px-4 py-3.5 font-mono text-xs text-indigo-400">{r.sku}</td>
-                    <td className="px-4 py-3.5 font-medium text-white">{r.product_name}</td>
-                    <td className="px-4 py-3.5 font-bold text-slate-200">{r.current_stock}</td>
-                    <td className="px-4 py-3.5 font-bold text-emerald-400">
+                  <tr key={r.product_id} className="hover:bg-white/[0.025] transition-colors">
+                    <td className="py-3.5 px-3 font-mono text-xs text-[#C6FF00]">{r.sku}</td>
+                    <td className="py-3.5 px-3 font-medium text-white">{r.product_name}</td>
+                    <td className="py-3.5 px-3 font-bold text-white font-mono">{r.current_stock}</td>
+                    <td className="py-3.5 px-3 font-bold text-[#B7FF38] font-mono">
                       {r.recommended_order_quantity > 0 ? `+${r.recommended_order_quantity}` : '0'}
                     </td>
-                    <td className="px-4 py-3.5 text-slate-400">{r.safety_stock}</td>
-                    <td className="px-4 py-3.5">
+                    <td className="py-3.5 px-3 text-[#8E8E8E] font-mono">{r.safety_stock}</td>
+                    <td className="py-3.5 px-3">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
                           r.action_type.includes('Reorder')
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            ? 'bg-[#FFD84D]/10 text-[#FFD84D] border-[#FFD84D]/20'
                             : r.action_type.includes('Clearance')
-                            ? 'bg-violet-500/10 text-violet-400 border-violet-500/20'
-                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            ? 'bg-[#C6FF00]/10 text-[#C6FF00] border-[#C6FF00]/20'
+                            : 'bg-[#B7FF38]/10 text-[#B7FF38] border-[#B7FF38]/20'
                         }`}
                       >
                         {r.action_type}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-300">{r.action_reason}</td>
+                    <td className="py-3.5 px-3 text-[#8E8E8E] text-xs flex items-center justify-between gap-2">
+                      <span>{r.action_reason}</span>
+                      <ExplainWithAIButton
+                        topic={`Recommendation for '${r.product_name}'`}
+                        contextData={{
+                          product: r.product_name,
+                          reorder_qty: r.recommended_order_quantity,
+                          action_type: r.action_type,
+                          safety_stock: r.safety_stock,
+                          reason: r.action_reason,
+                        }}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="p-8 text-center text-slate-400 bg-[#0E1420] rounded-xl border border-[#222D3F]">
+          <div className="p-8 text-center text-xs text-[#8E8E8E] bg-[#101010] rounded-2xl border border-white/5">
             No Data Available
           </div>
         )}

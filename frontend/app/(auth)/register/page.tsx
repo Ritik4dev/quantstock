@@ -52,100 +52,100 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#151C28] border border-[#222D3F] rounded-2xl p-8 shadow-2xl">
-        <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-3">
-            <Bot className="w-7 h-7 text-white" />
+    <div className="min-h-screen bg-[#070707] flex items-center justify-center p-4 selection:bg-[#C6FF00] selection:text-black">
+      <div className="w-full max-w-md card-inspo p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] space-y-5">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#C6FF00]/10 text-[#C6FF00] flex items-center justify-center border border-[#C6FF00]/20 shadow-[0_0_25px_rgba(198,255,0,0.2)] mb-3">
+            <Bot className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Create Quadstock Account</h1>
-          <p className="text-sm text-slate-400 mt-1">Register Store & Setup AI Management</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Create Quadstock Account</h1>
+          <p className="text-xs text-[#8E8E8E] mt-1 font-mono">Register Store & Setup AI Management</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 text-rose-400 text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
+          <div className="p-4 rounded-2xl bg-[#FF5B5B]/10 border border-[#FF5B5B]/20 flex items-center gap-3 text-[#FF5B5B] text-xs font-mono">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#555555] mb-1">
               Full Name
             </label>
             <div className="relative">
-              <UserIcon className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <UserIcon className="w-4 h-4 text-[#555555] absolute left-4 top-3" />
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#101010] border border-white/5 rounded-2xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none focus:border-[#C6FF00]/50"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#555555] mb-1">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <Mail className="w-4 h-4 text-[#555555] absolute left-4 top-3" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="owner@supermarket.com"
-                className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#101010] border border-white/5 rounded-2xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none focus:border-[#C6FF00]/50"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#555555] mb-1">
               Password
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <Lock className="w-4 h-4 text-[#555555] absolute left-4 top-3" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#101010] border border-white/5 rounded-2xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none focus:border-[#C6FF00]/50"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#555555] mb-1">
               Store / Business Name
             </label>
             <div className="relative">
-              <Store className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <Store className="w-4 h-4 text-[#555555] absolute left-4 top-3" />
               <input
                 type="text"
                 required
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Metro Supermarket"
-                className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#101010] border border-white/5 rounded-2xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-[#555555] focus:outline-none focus:border-[#C6FF00]/50"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#555555] mb-1">
               Business Category
             </label>
             <select
               value={businessType}
               onChange={(e) => setBusinessType(e.target.value)}
-              className="w-full bg-[#0E1420] border border-[#222D3F] rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-[#101010] border border-white/5 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#C6FF00]/50"
             >
               <option value="Grocery Store">Grocery Store</option>
               <option value="Supermarket">Supermarket</option>
@@ -159,16 +159,16 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full mt-2 py-3.5 bg-[#C6FF00] hover:bg-[#9DFF00] text-black font-bold text-xs rounded-2xl transition-all shadow-[0_4px_20px_rgba(198,255,0,0.4)] flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {loading ? 'Registering Account...' : 'Continue to AI Discovery'}
-            {!loading && <ArrowRight className="w-4 h-4" />}
+            <span>{loading ? 'Registering Account...' : 'Continue to AI Discovery'}</span>
+            {!loading && <ArrowRight className="w-4 h-4 text-black" />}
           </button>
         </form>
 
-        <div className="mt-5 text-center text-sm text-slate-400">
+        <div className="text-center text-xs text-[#8E8E8E] pt-2 border-t border-white/5">
           Already registered?{' '}
-          <Link href="/login" className="text-indigo-400 hover:underline font-semibold">
+          <Link href="/login" className="text-[#C6FF00] hover:underline font-bold">
             Sign In
           </Link>
         </div>

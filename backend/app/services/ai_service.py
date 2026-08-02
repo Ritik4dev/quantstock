@@ -171,37 +171,21 @@ class AIService:
 
     @staticmethod
     def _heuristic_extraction(user_input: str) -> ExtractedProfile:
-        """Rule-based heuristic fallback for text parsing."""
+        """Strict non-hallucinating rule-based fallback for text parsing."""
+        import re
         text = user_input.lower()
         profile_dict = {}
 
-        if "grocery" in text or "store" in text or "shop" in text or "supermarket" in text:
-            profile_dict["business_type"] = "Grocery Store"
-        if "college" in text or "university" in text or "campus" in text:
-            profile_dict["location_type"] = "Near College / Campus"
-            profile_dict["nearby_places"] = ["College"]
-            profile_dict["primary_customers"] = ["College Students"]
-
-        import re
-        customer_match = re.search(r"(\d+)\s*(customers|people|visitors)", text)
+        # Extract only explicitly mentioned patterns without guessing unmentioned fields
+        customer_match = re.search(r"(\d+)\s*(customers|people|visitors|footfall|daily sales)", text)
         if customer_match:
             profile_dict["daily_customers"] = customer_match.group(1)
 
-        products = []
-        if "cold drink" in text or "drinks" in text:
-            products.append("Cold Drinks")
-        if "maggi" in text:
-            products.append("Maggi")
-        if "biscuit" in text or "biscuits" in text:
-            products.append("Biscuits")
-        if products:
-            profile_dict["top_products"] = products
-
-        employee_match = re.search(r"(\d+)\s*(employees|staff|workers)", text)
+        employee_match = re.search(r"(\d+)\s*(employees|staff|workers|team members)", text)
         if employee_match:
             profile_dict["employees"] = employee_match.group(1)
 
-        supplier_match = re.search(r"(\d+)\s*(suppliers|vendors)", text)
+        supplier_match = re.search(r"(\d+)\s*(suppliers|vendors|distributors)", text)
         if supplier_match:
             profile_dict["supplier_count"] = supplier_match.group(1)
 

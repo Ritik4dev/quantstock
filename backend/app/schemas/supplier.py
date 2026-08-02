@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 
@@ -34,3 +34,23 @@ class SupplierResponse(SupplierBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PackagingFormatInfo(BaseModel):
+    """Packaging & Unit Analysis schema (Individual Units, Box Counts, Bulk Cases)."""
+    unit_type: str  # Individual Unit, Box of 12, Bulk Case of 48
+    units_per_package: int
+    cost_per_package: float
+    unit_cost_effective: float
+
+
+class AISupplierMappingItem(BaseModel):
+    """AI Product-to-Supplier Intelligent Mapping item."""
+    product_id: int
+    product_name: str
+    sku: str
+    optimal_supplier_id: int
+    optimal_supplier_name: str
+    recommended_packaging: PackagingFormatInfo
+    potential_savings_pct: float
+    mapping_reason: str

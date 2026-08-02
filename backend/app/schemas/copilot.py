@@ -59,6 +59,7 @@ class ExplainRequest(BaseModel):
     """Request payload to explain a metric or recommendation."""
     topic: str = Field(..., description="e.g. Stockout Risk, Reorder Quantity, Expiry Risk")
     item_id: Optional[int] = Field(default=None, description="Optional target product ID")
+    context_data: Optional[Dict[str, Any]] = Field(default=None, description="Optional metric context dictionary")
 
 
 class ExplainResponse(BaseModel):
