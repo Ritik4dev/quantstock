@@ -347,25 +347,64 @@ class SalesService:
         rows_failed = 0
         fmt = DocumentParserService.detect_format(filename)
 
+        def safe_str(val: Any, default: str = "") -> str:
+            if val is None:
+                return default
+            s = str(val).strip()
+            return s if s.lower() not in ("none", "null", "nan") else default
+
+        def safe_float(val: Any, default: float = 0.0) -> float:
+            if val is None:
+                return default
+            if isinstance(val, (int, float)):
+                return float(val)
+            s = str(val).replace(",", "").strip()
+            match = re.search(r"\d+\.?\d*|\.\d+", s)
+            if match:
+                try:
+                    return float(match.group(0))
+                except Exception:
+                    return default
+            return default
+
+        def safe_int(val: Any, default: int = 1) -> int:
+            if val is None:
+                return default
+            if isinstance(val, int):
+                return val
+            if isinstance(val, float):
+                return int(val)
+            s = str(val).strip()
+            match = re.search(r"\d+", s)
+            if match:
+                try:
+                    return int(match.group(0))
+                except Exception:
+                    return default
+            return default
+
         try:
             for s in extracted_sales:
                 if isinstance(s, dict):
-                    raw_name = s.get("product_name") or s.get("name") or ""
-                    p_name = str(raw_name).strip()
+                    raw_name = s.get("product_name") or s.get("name") or s.get("item") or ""
+                    p_name = safe_str(raw_name)
                     sku_raw = s.get("sku")
-                    sku = str(sku_raw).strip() if sku_raw else ProductService.generate_sku(p_name or "Product")
-                    qty = max(1, int(s.get("quantity_sold") or s.get("quantity") or 1))
-                    u_price = max(0.0, float(s.get("unit_price") or s.get("price") or 0.0))
-                    b_price = max(0.0, float(s.get("buying_price") or s.get("cost") or 0.0))
-                    tot_amount = float(s.get("total_amount") or 0.0)
+                    sku = safe_str(sku_raw, "")
+                    qty = max(1, safe_int(s.get("quantity_sold") or s.get("quantity"), 1))
+                    u_price = max(0.0, safe_float(s.get("unit_price") or s.get("price"), 0.0))
+                    b_price = max(0.0, safe_float(s.get("buying_price") or s.get("cost"), 0.0))
+                    tot_amount = safe_float(s.get("total_amount"), 0.0)
                     tot = round(qty * u_price, 2) if tot_amount == 0.0 else tot_amount
                 else:
-                    p_name = s.product_name.strip()
-                    sku = s.sku.strip() if s.sku else ProductService.generate_sku(p_name or "Product")
-                    qty = max(1, s.quantity_sold)
-                    u_price = max(0.0, s.unit_price)
-                    b_price = max(0.0, s.buying_price)
-                    tot = round(qty * u_price, 2) if s.total_amount == 0.0 else s.total_amount
+                    raw_name = getattr(s, "product_name", "") or getattr(s, "name", "")
+                    p_name = safe_str(raw_name)
+                    sku_raw = getattr(s, "sku", "")
+                    sku = safe_str(sku_raw, "")
+                    qty = max(1, safe_int(getattr(s, "quantity_sold", 1), 1))
+                    u_price = max(0.0, safe_float(getattr(s, "unit_price", 0.0), 0.0))
+                    b_price = max(0.0, safe_float(getattr(s, "buying_price", 0.0), 0.0))
+                    tot_amount = safe_float(getattr(s, "total_amount", 0.0), 0.0)
+                    tot = round(qty * u_price, 2) if tot_amount == 0.0 else tot_amount
 
                 if not p_name:
                     rows_failed += 1
